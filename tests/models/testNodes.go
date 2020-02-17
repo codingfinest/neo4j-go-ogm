@@ -110,7 +110,7 @@ type Node9 struct {
 
 type Node10 struct {
 	TestNodeEntity
-	ZeroTime     time.Time
+	//ZeroTime     time.Time
 	NilTime1     *time.Time
 	ZeroDuration neo4j.Duration
 

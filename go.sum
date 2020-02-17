@@ -1,3 +1,4 @@
+github.com/codingfinest/neo4j-go-ogm v0.0.0-20200209024116-c7afe1abecdf h1:fmdxkPxgjno9CqD3fjMvRoAF+jfGIeL//vpM7WnPXAA=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=

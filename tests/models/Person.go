@@ -26,7 +26,7 @@ type Person struct {
 	TestNodeEntity
 	Name    string
 	Born    int64
-	Follows []*Person `gogm:"reltype:FOLLOWS,direction:<-"`
+	Follows []*Person `gogm:"reltype:FOLLOWS,direction:->"`
 	Tags    []string  `gogm:"label"`
 }
 

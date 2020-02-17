@@ -49,7 +49,7 @@ func (s *sessionImpl) LoadAll(objects interface{}, IDs interface{}, loadOptions 
 }
 
 func (s *sessionImpl) Reload(objects ...interface{}) error {
-	return s.loader.reload(objects)
+	return s.loader.reload(objects...)
 }
 
 //Save is a saver
@@ -109,8 +109,8 @@ func (s *sessionImpl) QueryForObjects(objects interface{}, cypher string, parame
 	return s.queryer.queryForObjects(objects, cypher, parameters)
 }
 
-func (s *sessionImpl) Query(cypher string, parameters map[string]interface{}) (neo4j.Result, error) {
-	return s.queryer.query(cypher, parameters)
+func (s *sessionImpl) Query(cypher string, parameters map[string]interface{}, objects ...interface{}) ([]map[string]interface{}, error) {
+	return s.queryer.query(cypher, parameters, objects...)
 }
 
 func (s *sessionImpl) CountEntitiesOfType(object interface{}) (int64, error) {

@@ -23,6 +23,7 @@
 package gogm_test
 
 import (
+	"sort"
 	"testing"
 	"time"
 
@@ -500,12 +501,6 @@ func TestSaveMultiSourceRelationship(t *testing.T) {
 	g.Expect(*loadedTheMatrix.Characters[0].Actor.ID).To(Equal(*carrieAnne.ID))
 	g.Expect(*loadedTheMatrix.Characters[1].Actor.ID).To(Equal(*keanu.ID))
 
-	g.Expect(len(loadedTheMatrix.Characters[0].Actor.Characters)).To(Equal(1))
-	g.Expect(*loadedTheMatrix.Characters[0].Actor.Characters[0].ID).To(Equal(*carrieAnneMatrixCharacter.ID))
-
-	g.Expect(len(loadedTheMatrix.Characters[1].Actor.Characters)).To(Equal(1))
-	g.Expect(*loadedTheMatrix.Characters[1].Actor.Characters[0].ID).To(Equal(*keanuReevesMatrixCharacter.ID))
-
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
@@ -636,16 +631,11 @@ func TestFullPathSaveByOGMIsLoadable(t *testing.T) {
 
 	g.Expect(*loadedN0.N1.ID).To(Equal(*n1.ID))
 
-	g.Expect(*loadedN0.N1.N0.ID).To(Equal(*n0.ID))
 	g.Expect(*loadedN0.N1.N2.ID).To(Equal(*n2.ID))
 
-	g.Expect(*loadedN0.N1.N2.N1.ID).To(Equal(*n1.ID))
 	g.Expect(*loadedN0.N1.N2.N3.ID).To(Equal(*n3.ID))
 
-	g.Expect(*loadedN0.N1.N2.N3.N2.ID).To(Equal(*n2.ID))
 	g.Expect(*loadedN0.N1.N2.N3.N4.ID).To(Equal(*n4.ID))
-
-	g.Expect(*loadedN0.N1.N2.N3.N4.N3.ID).To(Equal(*n3.ID))
 
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
@@ -690,10 +680,8 @@ func TestPathSaveByOGMIsLoadable(t *testing.T) {
 
 	g.Expect(*loadedN0.N1.ID).To(Equal(*n1.ID))
 
-	g.Expect(*loadedN0.N1.N0.ID).To(Equal(*n0.ID))
 	g.Expect(*loadedN0.N1.N2.ID).To(Equal(*n2.ID))
 
-	g.Expect(*loadedN0.N1.N2.N1.ID).To(Equal(*n1.ID))
 	g.Expect(loadedN0.N1.N2.N3).To(BeNil())
 
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
@@ -744,16 +732,17 @@ func TestLoadFromLocalStore(t *testing.T) {
 	lo.Depth = 1
 	var loadedN1_1 *Node1
 	g.Expect(session.Load(&loadedN1_1, *n1.ID, lo)).NotTo(HaveOccurred())
-
+	g.Expect(loadedN1_1.N2.N3.N4).To(BeNil())
 	g.Expect(loadedN1_1).To(Equal(loadedN1))
 
 	lo.Depth = 2
 	g.Expect(session.Load(&loadedN1_1, *n1.ID, lo)).NotTo(HaveOccurred())
+	g.Expect(loadedN1_1.N2.N3.N4).To(BeNil())
 	g.Expect(loadedN1_1).To(Equal(loadedN1))
 
-	lo.Depth = 5
+	lo.Depth = 3
 	g.Expect(session.Load(&loadedN1_1, *n1.ID, lo)).NotTo(HaveOccurred())
-	g.Expect(loadedN1_1).To(Equal(loadedN1))
+	g.Expect(loadedN1_1.N2.N3.N4).ToNot(BeNil())
 
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
@@ -941,8 +930,9 @@ func TestTransactions(t *testing.T) {
 
 	//Testing committing
 	n3 = &Node3{}
-	n2.N3 = n3
 	n3.Name = "3"
+	n0.N1.N2.N3 = n3
+
 	n3.N4 = n4
 	so.Depth = 3
 
@@ -963,99 +953,168 @@ func TestTransactions(t *testing.T) {
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
 
-// func TestQueryForObject_s(t *testing.T) {
-// 	g := NewGomegaWithT(t)
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+func TestQuery_Nodes(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 
-// 	var person *Person
-// 	g.Expect(session.QueryForObject(&person, "MATCH (person) RETURN person", nil)).NotTo(HaveOccurred())
+	jamesThompson := &Person{}
+	jamesThompson.Name = "James Thompson"
+	jamesThompson.Tags = []string{"James", "Followee"}
 
-// 	g.Expect(person).To(BeNil())
+	jessicaThompson := &Person{}
+	jessicaThompson.Name = "Jessica Thompson"
+	jessicaThompson.Tags = []string{"Jessica", "Follower"}
 
-// 	jamesThompson := &Person{}
-// 	jamesThompson.Name = "James Thompson"
-// 	jamesThompson.Tags = []string{"James", "Followee"}
+	angelaScope := &Person{}
+	angelaScope.Name = "Angela Scope"
+	angelaScope.Tags = []string{"Angela", "Followee"}
 
-// 	jessicaThompson := &Person{}
-// 	jessicaThompson.Name = "Jessica Thompson"
-// 	jessicaThompson.Tags = []string{"Jessica", "Follower"}
+	jessicaThompson.Follows = append(jessicaThompson.Follows, jamesThompson, angelaScope)
 
-// 	angelaScope := &Person{}
-// 	angelaScope.Name = "Angela Scope"
-// 	angelaScope.Tags = []string{"Angela", "Followee"}
+	g.Expect(session.Save(&jessicaThompson, nil)).NotTo(HaveOccurred())
 
-// 	jessicaThompson.Follows = append(jessicaThompson.Follows, jamesThompson, angelaScope)
+	person := &Person{}
+	rows, err := session.Query("MATCH (person) RETURN person", nil, &person)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(len(rows)).To(Equal(3))
 
-// 	g.Expect(session.Save(&jessicaThompson, nil)).NotTo(HaveOccurred())
+	for _, row := range rows {
+		g.Expect(row["person"].(*Person).ID).NotTo(BeNil())
+	}
 
-// 	g.Expect(session.QueryForObject(&person, "MATCH (person:PERSON) RETURN person", nil)).To(HaveOccurred())
-// 	g.Expect(person).To(BeNil())
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
 
-// 	g.Expect(session.QueryForObject(&person, "MATCH (person:PERSON) WHERE person.name = $name RETURN person", map[string]interface{}{"name": "Angela Scope"})).ToNot(HaveOccurred())
-// 	g.Expect(person).To(Equal(angelaScope))
+func TestQuery_Node_Relationship(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+	simpleRelationship1 := SimpleRelationship{}
+	n5 := &Node5{}
+	n4 := &Node4{}
+	simpleRelationship1.N4 = n4
+	simpleRelationship1.N5 = n5
 
-// 	var persons []*Person
-// 	g.Expect(session.QueryForObjects(&persons, "MATCH (person:PERSON) RETURN person", nil)).ToNot(HaveOccurred())
-// 	g.Expect(len(persons)).To(Equal(3))
+	simpleRelationship2 := SimpleRelationship{}
+	simpleRelationship2.N4 = n4
+	simpleRelationship2.N5 = n5
 
-// 	sort.SliceStable(persons, func(i, j int) bool { return persons[i].Name < persons[j].Name })
-// 	g.Expect(persons[0]).To(Equal(angelaScope))
-// 	g.Expect(persons[1]).To(Equal(jamesThompson))
+	simpleRelationship3 := SimpleRelationship{}
+	simpleRelationship3.N4 = n4
+	simpleRelationship3.N5 = n5
 
-// 	//Note, just for comparison
-// 	jessicaThompson.Follows = nil
-// 	g.Expect(persons[2]).To(Equal(jessicaThompson))
+	simpleRelationships := []*SimpleRelationship{&simpleRelationship1, &simpleRelationship2, &simpleRelationship3}
 
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
-// }
+	g.Expect(session.Save(&simpleRelationships, nil)).NotTo(HaveOccurred())
+	rows, err := session.Query("MATCH (n5)-[r:SIMPLERELATIONSHIP]->(n4) RETURN n4, n5, r", nil)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(len(rows)).To(Equal(3))
 
-// func TestCount(t *testing.T) {
-// 	g := NewGomegaWithT(t)
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+	for _, row := range rows {
+		g.Expect(row["n4"].(*Node4).ID).NotTo(BeNil())
+		g.Expect(row["n5"].(*Node5).ID).NotTo(BeNil())
+		g.Expect(row["r"].(*SimpleRelationship).ID).NotTo(BeNil())
+	}
 
-// 	count, err := session.Count("MATCH (n:INVALID) RETURN COUNT(n)", nil)
-// 	g.Expect(err).NotTo(HaveOccurred())
-// 	g.Expect(count).To(BeZero())
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
 
-// 	simpleRelationship1 := SimpleRelationship{}
-// 	n5 := &Node5{}
-// 	n4 := &Node4{}
-// 	simpleRelationship1.N4 = n4
-// 	simpleRelationship1.N5 = n5
+func TestQueryForObject_s(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 
-// 	simpleRelationship2 := SimpleRelationship{}
-// 	simpleRelationship2.N4 = n4
-// 	simpleRelationship2.N5 = n5
+	var person *Person
+	g.Expect(session.QueryForObject(&person, "MATCH (person) RETURN person", nil)).NotTo(HaveOccurred())
 
-// 	simpleRelationships := []*SimpleRelationship{&simpleRelationship1, &simpleRelationship2}
+	g.Expect(person).To(BeNil())
 
-// 	g.Expect(session.Save(&simpleRelationships, nil)).NotTo(HaveOccurred())
+	jamesThompson := &Person{}
+	jamesThompson.Name = "James Thompson"
+	jamesThompson.Tags = []string{"James", "Followee"}
 
-// 	count, err = session.Count("MATCH (n:NODE4) RETURN COUNT(n)", nil)
-// 	g.Expect(err).NotTo(HaveOccurred())
-// 	g.Expect(count).To(Equal(int64(1)))
+	jessicaThompson := &Person{}
+	jessicaThompson.Name = "Jessica Thompson"
+	jessicaThompson.Tags = []string{"Jessica", "Follower"}
 
-// 	count, err = session.Count("MATCH (n:NODE5) RETURN COUNT(n)", nil)
-// 	g.Expect(err).NotTo(HaveOccurred())
-// 	g.Expect(count).To(Equal(int64(1)))
+	angelaScope := &Person{}
+	angelaScope.Name = "Angela Scope"
+	angelaScope.Tags = []string{"Angela", "Followee"}
 
-// 	n4_1 := &Node4{}
-// 	n4_2 := &Node4{}
-// 	n4_3 := &Node4{}
-// 	n4_4 := &Node4{}
-// 	n4s := [4]*Node4{n4_1, n4_2, n4_3, n4_4}
-// 	g.Expect(session.Save(&n4s, nil)).NotTo(HaveOccurred())
+	jessicaThompson.Follows = append(jessicaThompson.Follows, jamesThompson, angelaScope)
 
-// 	count, err = session.Count("MATCH (n:NODE4) RETURN COUNT(n)", nil)
-// 	g.Expect(err).NotTo(HaveOccurred())
-// 	g.Expect(count).To(Equal(int64(5)))
+	g.Expect(session.Save(&jessicaThompson, nil)).NotTo(HaveOccurred())
 
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
-// }
+	g.Expect(session.QueryForObject(&person, "MATCH (person:Person) RETURN person", nil)).To(HaveOccurred())
+	g.Expect(person).To(BeNil())
+
+	g.Expect(session.QueryForObject(&person, "MATCH (person:Person) WHERE person.name = $name RETURN person", map[string]interface{}{"name": "Angela Scope"})).ToNot(HaveOccurred())
+	g.Expect(person).To(Equal(angelaScope))
+
+	var persons []*Person
+	g.Expect(session.QueryForObjects(&persons, "MATCH (person:Person) RETURN person", nil)).ToNot(HaveOccurred())
+	g.Expect(len(persons)).To(Equal(3))
+
+	sort.SliceStable(persons, func(i, j int) bool { return persons[i].Name < persons[j].Name })
+	g.Expect(persons[0]).To(Equal(angelaScope))
+	g.Expect(persons[1]).To(Equal(jamesThompson))
+
+	//Note, just for comparison
+	jessicaThompson.Follows = nil
+	g.Expect(persons[2]).To(Equal(jessicaThompson))
+
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
+
+func TestCount(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+
+	count, err := session.Count("MATCH (n:INVALID) RETURN COUNT(n)", nil)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(count).To(BeZero())
+
+	simpleRelationship1 := SimpleRelationship{}
+	n5 := &Node5{}
+	n4 := &Node4{}
+	simpleRelationship1.N4 = n4
+	simpleRelationship1.N5 = n5
+
+	simpleRelationship2 := SimpleRelationship{}
+	simpleRelationship2.N4 = n4
+	simpleRelationship2.N5 = n5
+
+	simpleRelationships := []*SimpleRelationship{&simpleRelationship1, &simpleRelationship2}
+
+	g.Expect(session.Save(&simpleRelationships, nil)).NotTo(HaveOccurred())
+
+	count, err = session.Count("MATCH (n:Node4) RETURN COUNT(n)", nil)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(count).To(Equal(int64(1)))
+
+	count, err = session.Count("MATCH (n:Node5) RETURN COUNT(n)", nil)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(count).To(Equal(int64(1)))
+
+	n4_1 := &Node4{}
+	n4_2 := &Node4{}
+	n4_3 := &Node4{}
+	n4_4 := &Node4{}
+	n4s := [4]*Node4{n4_1, n4_2, n4_3, n4_4}
+	g.Expect(session.Save(&n4s, nil)).NotTo(HaveOccurred())
+
+	count, err = session.Count("MATCH (n:Node4) RETURN COUNT(n)", nil)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(count).To(Equal(int64(5)))
+
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
 
 func TestMappedProperties(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -1088,6 +1147,7 @@ func TestMappedProperties(t *testing.T) {
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
 
+//TODO Document time. use *time.Time and not time.Time
 func TestSavingAndLoadingTime(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
@@ -1112,75 +1172,79 @@ func TestSavingAndLoadingTime(t *testing.T) {
 
 	var loadedN10 *Node10
 	g.Expect(session.Load(&loadedN10, *n10.ID, nil)).NotTo(HaveOccurred())
+	n10.ClearMetaTimestamps()
 	g.Expect(loadedN10).To(Equal(n10))
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
 
 //Error cases
-// func TestSaveNodeWithInvalidCustomID(t *testing.T) {
-// 	g := NewGomegaWithT(t)
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+func TestSaveNodeWithInvalidCustomID(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 
-// 	invalidID := &InvalidID{}
-// 	testID := "r"
-// 	invalidID.TestId = &testID
-// 	g.Expect(session.Save(invalidID, nil)).To(HaveOccurred())
+	invalidID := &InvalidID{}
+	testID := "r"
+	invalidID.TestId = &testID
+	g.Expect(session.Save(invalidID, nil)).To(HaveOccurred())
 
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
-// }
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
 
-// func TestForbiddenLabel(t *testing.T) {
-// 	g := NewGomegaWithT(t)
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.RegisterEventListener(eventListener)).NotTo(HaveOccurred())
+func TestForbiddenLabel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.RegisterEventListener(eventListener)).NotTo(HaveOccurred())
 
-// 	angelaScope := &Person{}
-// 	angelaScope.Name = "Angela Scope"
-// 	angelaScope.Tags = []string{"Angela"}
+	angelaScope := &Person{}
+	angelaScope.Name = "Angela Scope"
+	angelaScope.Tags = []string{"Angela"}
 
-// 	g.Expect(session.Save(&angelaScope, nil)).ToNot(HaveOccurred())
-// 	g.Expect(angelaScope.UpdatedAt).To(BeZero())
+	g.Expect(session.Save(&angelaScope, nil)).ToNot(HaveOccurred())
+	g.Expect(angelaScope.UpdatedAt).To(BeZero())
 
-// 	angelaScope.Tags = []string{"Ana"}
-// 	g.Expect(session.Save(&angelaScope, nil)).ToNot(HaveOccurred())
-// 	g.Expect(angelaScope.UpdatedAt).NotTo(BeZero())
+	angelaScope.Tags = []string{"Ana"}
+	g.Expect(session.Save(&angelaScope, nil)).ToNot(HaveOccurred())
+	g.Expect(angelaScope.UpdatedAt).NotTo(BeZero())
 
-// 	angelaScope.Tags = []string{"Ana", "PERSON"}
-// 	g.Expect(session.Save(&angelaScope, nil)).To(HaveOccurred())
+	angelaScope.Tags = []string{"Ana", "Person"}
+	g.Expect(session.Save(&angelaScope, nil)).To(HaveOccurred())
 
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
-// }
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
 
-// func TestQueryForObject_fail(t *testing.T) {
-// 	g := NewGomegaWithT(t)
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+func TestQueryForObject_fail(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 
-// 	jamesThompson := &Person{}
-// 	jamesThompson.Name = "James Thompson"
-// 	jamesThompson.Tags = []string{"James", "Followee"}
+	jamesThompson := &Person{}
+	jamesThompson.Name = "James Thompson"
+	jamesThompson.Tags = []string{"James", "Followee"}
 
-// 	jessicaThompson := &Person{}
-// 	jessicaThompson.Name = "Jessica Thompson"
-// 	jessicaThompson.Tags = []string{"Jessica", "Follower"}
+	jessicaThompson := &Person{}
+	jessicaThompson.Name = "Jessica Thompson"
+	jessicaThompson.Tags = []string{"Jessica", "Follower"}
 
-// 	angelaScope := &Person{}
-// 	angelaScope.Name = "Angela Scope"
-// 	angelaScope.Tags = []string{"Angela", "Followee"}
+	angelaScope := &Person{}
+	angelaScope.Name = "Angela Scope"
+	angelaScope.Tags = []string{"Angela", "Followee"}
 
-// 	jessicaThompson.Follows = append(jessicaThompson.Follows, jamesThompson, angelaScope)
+	jessicaThompson.Follows = append(jessicaThompson.Follows, jamesThompson, angelaScope)
 
-// 	g.Expect(session.Save(&jessicaThompson, nil)).NotTo(HaveOccurred())
+	g.Expect(session.Save(&jessicaThompson, nil)).NotTo(HaveOccurred())
+	session.Clear()
+	var loadedjessicaThompson *Person
+	g.Expect(session.Load(&loadedjessicaThompson, *jessicaThompson.ID, nil)).NotTo(HaveOccurred())
 
-// 	var relationships []*SimpleRelationship
-// 	g.Expect(session.QueryForObjects(&relationships, "MATCH (person:PERSON) RETURN person", nil)).To(HaveOccurred())
+	var relationships []*SimpleRelationship
+	g.Expect(session.QueryForObjects(&relationships, "MATCH (person:Person) RETURN person", nil)).To(HaveOccurred())
 
-// 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
-// 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
-// }
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
 
 //Test that loading with ID nil loads all the type

@@ -22,14 +22,17 @@
 
 package gogm
 
+//Object is the base object for all domain Nodes and Relationships
 type Object struct {
 	ID *int64 `json:"id"`
 }
 
-type Relationship struct {
+//Node is the base object for all domain Nodes
+type Node struct {
 	Object
 }
 
-type Node struct {
+//Relationship is the base object for all domain Relationships
+type Relationship struct {
 	Object
 }

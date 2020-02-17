@@ -94,6 +94,7 @@ func (d *deleter) delete(object interface{}) error {
 
 	cypher := getCyhperFromClauses(graphDeleteClauses)
 
+	//Moe to line 111. just before calling execing the cypher
 	typeOfGraphToDelete := reflect.TypeOf(storedGraph)
 	for _, eventListener := range d.eventer.eventListeners {
 		eventListener.OnPreDelete(event{storedGraph.getValue(), DELETE})

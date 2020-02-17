@@ -19,7 +19,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-
 package gogm
 
 import (
@@ -51,7 +50,7 @@ func getFeilds(v reflect.Value, fieldFilters ...fieldFilter) ([][]*field, error)
 func getEntitiesFromField(f *field) []reflect.Value {
 	values := []reflect.Value{}
 	kind := f.getStructField().Type.Kind()
-	//TODO  rmsupport for reflect.Array
+	//TODO  rm support for reflect.Array
 	if kind == reflect.Slice || kind == reflect.Array {
 		for i := 0; i < f.getValue().Len(); i++ {
 			if f.getValue().Index(i).IsNil() || !f.getValue().Index(i).Elem().IsValid() {

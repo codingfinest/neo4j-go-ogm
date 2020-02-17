@@ -59,7 +59,7 @@ func (s *saver) save(object interface{}, saveOptions *SaveOptions) error {
 	}
 
 	if saveOptions.Depth > maxDepth {
-		return errors.New("Cannont save greater than max depth")
+		return errors.New("Cannot save greater than max depth")
 	}
 
 	if graphs, err = s.graphFactory.get(reflect.ValueOf(object), nil); err != nil {
@@ -102,11 +102,6 @@ func (s *saver) save(object interface{}, saveOptions *SaveOptions) error {
 						g.setRelatedGraph(relatedGraph)
 					}
 				}
-				// else {
-				// 	if storedRelatedGraph := store.get(relatedGraph); storedRelatedGraph != nil {
-				// 		g.setRelatedGraph(storedRelatedGraph)
-				// 	}
-				// }
 			}
 
 			savedDepth := savedDepths[g.getCoordinate().graphIndex]
@@ -114,7 +109,6 @@ func (s *saver) save(object interface{}, saveOptions *SaveOptions) error {
 				if g.getCoordinate().depth == 0 {
 					g.setDepth(&savedDepth)
 				}
-				g.setCoordinate(nil)
 				saveLifecycle := UPDATE
 				if createdGraphSignatures[g.getSignature()] {
 					saveLifecycle = CREATE
@@ -130,7 +124,6 @@ func (s *saver) save(object interface{}, saveOptions *SaveOptions) error {
 		}
 	}
 
-	// store.print()
 	return err
 }
 
@@ -157,7 +150,7 @@ func (s *saver) persist(graphs []graph, saveOptions *SaveOptions) ([]int, neo4j.
 		for _, rg := range graph.getRelatedGraphs() {
 			ensureID(rg)
 		}
-		graph.setCoordinate(&coordinate{0, 0, index})
+		graph.setCoordinate(&coordinate{0, index})
 
 		var graphSaveClauses clauses
 		var savedDepth int
@@ -219,8 +212,7 @@ func (s *saver) persist(graphs []graph, saveOptions *SaveOptions) ([]int, neo4j.
 
 func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(graph)) (int, map[clause][]string, map[string]graph, map[string]graph, map[string]interface{}, error) {
 	var (
-		err             error
-		subGraphIndices = map[int]int{}
+		err error
 
 		savedGraphs      = map[string]graph{}
 		deletedGraphs    = map[string]graph{}
@@ -232,12 +224,6 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 		savedDepth   = -1
 		depedencies  []map[string]graph
 	)
-
-	nextSubGraphIndex := func(depth int) int {
-		graphIndex := subGraphIndices[depth]
-		subGraphIndices[depth]++
-		return graphIndex
-	}
 
 	maxGraphDepth := maxDepth
 	if saveOptions.Depth > infiniteDepth {
@@ -264,12 +250,7 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 			return savedDepth, nil, nil, nil, nil, err
 		}
 
-		// stored := s.store.get(queue[0])
-		// if stored != nil && stored.getCoordinate() != nil {
-		// 	return savedDepth, nil, nil, nil, nil, errors.New("Revisiting a visited graph on save with signature" + stored.getSignature())
-		// }
-
-		if err := loadRelatedGraphs(queue[0], ensureID, s.registry, loadedGraphs, s.store, nextSubGraphIndex); err != nil {
+		if err := loadRelatedGraphs(queue[0], ensureID, s.registry, loadedGraphs, s.store); err != nil {
 			//TODO hit this error. then save in test
 			return savedDepth, nil, nil, nil, nil, err
 		}
@@ -372,7 +353,7 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 	return savedDepth, graphSaveClauses, savedGraphs, deletedGraphs, flattenParamters(parameters), err
 }
 
-func loadRelatedGraphs(g graph, ID func(graph), registry *registry, loadedGraphs store, local store, nextSubGraphIndex func(int) int) error {
+func loadRelatedGraphs(g graph, ID func(graph), registry *registry, loadedGraphs store, local store) error {
 	var (
 		err      error
 		metadata metadata
@@ -389,11 +370,7 @@ func loadRelatedGraphs(g graph, ID func(graph), registry *registry, loadedGraphs
 
 	for _, relatedGraph := range relatedGraphs {
 		if loadedGraphs.get(relatedGraph) == nil {
-			// stored := local.get(relatedGraph)
-			// if stored != nil && stored.getCoordinate() != nil {
-			// 	return errors.New("Revisiting a visited graph on save with signature" + stored.getSignature())
-			// }
-			cord := &coordinate{g.getCoordinate().depth + 1, nextSubGraphIndex(g.getCoordinate().depth), g.getCoordinate().graphIndex}
+			cord := &coordinate{g.getCoordinate().depth + 1, g.getCoordinate().graphIndex}
 			relatedGraph.setCoordinate(cord)
 			loadedGraphs.save(relatedGraph)
 		}

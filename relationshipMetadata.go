@@ -125,8 +125,8 @@ func (rm *relationshipMetadata) getGraphField(g graph, relatedGraph graph) (*fie
 		}
 
 		nodeMetadata := metadata.(*nodeMetadata)
-		relatedGraphStructLabel := nodeMetadata.getStructLabel(relatedGraph)
-		otherNodeGraphStructLabel := nodeMetadata.getStructLabel(otherNode)
+		relatedGraphStructLabel := nodeMetadata.filterStructLabel(relatedGraph)
+		otherNodeGraphStructLabel := nodeMetadata.filterStructLabel(otherNode)
 		var otherNodeStructField *reflect.StructField
 		if relatedGraphStructLabel == otherNodeGraphStructLabel {
 			otherNodeStructField = nodeMetadata.getSameEntityRelStructFields(g.getLabel(), relDirection)

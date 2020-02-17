@@ -28,7 +28,6 @@ import (
 )
 
 type graphQueryBuilder interface {
-	getGraph() graph
 	getCreate() (string, string, map[string]interface{}, map[string]graph)
 	getMatch() (string, map[string]interface{}, map[string]graph)
 	getSet() (string, map[string]interface{})
@@ -37,6 +36,7 @@ type graphQueryBuilder interface {
 	getDeleteAll() (string, map[string]interface{})
 	getCountEntitiesOfType() (string, map[string]interface{})
 
+	getGraph() graph
 	isGraphDirty() bool
 	getRemovedGraphs() (map[int64]graph, map[int64]graph)
 }

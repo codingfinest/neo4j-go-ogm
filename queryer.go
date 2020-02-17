@@ -107,8 +107,105 @@ func (q *queryer) queryForObjects(objects interface{}, cypher string, parameters
 	return nil
 }
 
-func (q *queryer) query(cypher string, parameters map[string]interface{}) (neo4j.Result, error) {
-	return q.cypherExecuter.exec(cypher, parameters)
+func (q *queryer) query(cypher string, parameters map[string]interface{}, objects ...interface{}) ([]map[string]interface{}, error) {
+
+	//registry all objects
+	for _, object := range objects {
+		if _, err := q.registry.get(reflect.TypeOf(object).Elem()); err != nil {
+			return nil, err
+		}
+	}
+
+	records, err := neo4j.Collect(q.cypherExecuter.exec(cypher, parameters))
+	if err != nil {
+		return nil, err
+	}
+
+	rows := []map[string]interface{}{}
+	for _, record := range records {
+		columns := map[string]interface{}{}
+		for index, key := range record.Keys() {
+			if neo4jNode, isNeo4jNode := record.GetByIndex(index).(neo4j.Node); isNeo4jNode == true {
+				var g graph
+				properties := neo4jNode.Props()
+
+				//find node struct and add it
+				for _, label := range neo4jNode.Labels() {
+					for _, metadata := range q.registry.getLabelMetadatas(label) {
+						if nodeMetadata, ok := metadata.(*nodeMetadata); ok && nodeMetadata.getType() != nil /*chech for nil?*/ {
+
+							nodeLabels := make([]string, len(neo4jNode.Labels()))
+							copy(nodeLabels, neo4jNode.Labels())
+
+							//remove runtime labels from node labels
+							if nodeMetadata.runtimeLabelsStructField != nil {
+								name := strings.ToLower(nodeMetadata.runtimeLabelsStructField.Name)
+								names := getNamespacedTag(nodeMetadata.runtimeLabelsStructField.Tag).get(propertyNameTag)
+								if len(names) > 0 {
+									name = names[0]
+								}
+								for _, runtimeLabel := range properties[name].([]interface{}) {
+									var index = indexOfString(nodeLabels, runtimeLabel.(string))
+									if index > -1 {
+										nodeLabels = removeStringAt(nodeLabels, index)
+									}
+								}
+							}
+
+							sort.Strings(nodeLabels)
+							if strings.Join(nodeLabels, labelsDelim) == nodeMetadata.structLabel {
+								v := reflect.New(nodeMetadata.getType().Elem())
+								g = &node{
+									Value:      &v,
+									properties: neo4jNode.Props()}
+								g.getProperties()[idPropertyName] = neo4jNode.Id()
+								driverPropertiesAsStructFieldValues(g.getProperties(), nodeMetadata.getPropertyStructFields())
+								unloadGraphProperties(g, nodeMetadata.getPropertyStructFields())
+								break
+							}
+
+						}
+					}
+					if g != nil {
+						break
+					}
+				}
+				if g == nil {
+					return nil, errors.New("couldn't fit in node") //TODO better error
+				}
+				columns[key] = g.getValue().Interface()
+			} else if neo4jRelationship, isNeo4jRelationship := record.GetByIndex(index).(neo4j.Relationship); isNeo4jRelationship == true {
+
+				//find relationship struct and add it
+				var g graph
+				relType := neo4jRelationship.Type()
+				for _, metadata := range q.registry.getLabelMetadatas(relType) {
+					if relationshipMetadata, ok := metadata.(*relationshipMetadata); ok && relationshipMetadata.getType() != nil /*chech for nil?*/ {
+						if relationshipMetadata.structLabel == neo4jRelationship.Type() {
+							v := reflect.New(relationshipMetadata.getType().Elem())
+							g = &relationship{
+								Value:      &v,
+								properties: neo4jRelationship.Props()}
+							g.getProperties()[idPropertyName] = neo4jRelationship.Id()
+							driverPropertiesAsStructFieldValues(g.getProperties(), relationshipMetadata.getPropertyStructFields())
+							unloadGraphProperties(g, relationshipMetadata.getPropertyStructFields())
+							break
+						}
+					}
+				}
+				if g == nil {
+					//Note realtionship cuold be simple relationship and no domain objet to hold it
+					return nil, errors.New("couldn't fit in relationship") //TODO better error
+				}
+				columns[key] = g.getValue().Interface()
+			} else {
+				columns[key] = record.GetByIndex(index)
+			}
+		}
+		rows = append(rows, columns)
+	}
+
+	return rows, err
 }
 
 func (q *queryer) getObjectsFromRecords(domainObjectType reflect.Type, metadata metadata, label string, records []neo4j.Record) (reflect.Value, error) {
@@ -145,7 +242,7 @@ func (q *queryer) getObjectsFromRecords(domainObjectType reflect.Type, metadata 
 				label:      strings.Join(labels, labelsDelim)}
 			g.getProperties()[idPropertyName] = neo4jNode.Id()
 
-			entityLabel = nodeMetadata.getStructLabel(g)
+			entityLabel = nodeMetadata.filterStructLabel(g)
 		}
 
 		if neo4jRelationship, isNeo4jReleationship := column0.(neo4j.Relationship); isNeo4jReleationship == true {

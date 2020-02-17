@@ -116,8 +116,8 @@ func (nm *nodeMetadata) getGraphField(g graph, relatedGraph graph) (*field, erro
 	fromNode := relatedGraph.getRelatedGraphs()[startNode]
 	toNode := relatedGraph.getRelatedGraphs()[endNode]
 
-	fromStructLabel := nm.getStructLabel(fromNode)
-	toStructLabel := nm.getStructLabel(toNode)
+	fromStructLabel := nm.filterStructLabel(fromNode)
+	toStructLabel := nm.filterStructLabel(toNode)
 
 	if fromStructLabel == toStructLabel {
 		direction := outgoing
@@ -143,7 +143,7 @@ func (nm *nodeMetadata) getGraphField(g graph, relatedGraph graph) (*field, erro
 	return relatedGraphField, nil
 }
 
-func (nm *nodeMetadata) getStructLabel(g graph) string {
+func (nm *nodeMetadata) filterStructLabel(g graph) string {
 	var labels []string
 	for _, label := range strings.Split(g.getLabel(), labelsDelim) {
 		if nm.disallowedRuntimeLabels[label] {

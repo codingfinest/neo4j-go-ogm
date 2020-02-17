@@ -36,6 +36,8 @@ type metadata interface {
 	loadRelatedGraphs(g graph, ID func(graph), registry *registry) (map[int64]graph, error)
 	getGraphField(ref graph, relatedGraph graph) (*field, error)
 	getPropertyStructFields() map[string]*reflect.StructField
+	getStructLabel() string
+	getType() reflect.Type
 }
 
 type commonMetadata struct {
@@ -44,6 +46,15 @@ type commonMetadata struct {
 	registry             *registry
 	propertyStructFields map[string]*reflect.StructField
 	customIDBackendName  string
+	_type                reflect.Type
+}
+
+func (c *commonMetadata) getType() reflect.Type {
+	return c._type
+}
+
+func (c *commonMetadata) getStructLabel() string {
+	return c.structLabel
 }
 
 func (c *commonMetadata) getCustomID(v reflect.Value) (string, reflect.Value) {
@@ -111,6 +122,7 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 		r.structLabel = getRelationshipType(typeOfObject.Elem())
 		r.propertyStructFields = propertyStructFields
 		r.customIDBackendName = customIDBackendName
+		r._type = typeOfObject
 
 		endpointFields, _ := getFeilds(valueOfObject.Elem(), isRelationshipEndPointFieldFilter(startNodeTag), isRelationshipEndPointFieldFilter(endNodeTag))
 
@@ -140,6 +152,7 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 		n.name = typeOfObject.String()
 		n.customIDBackendName = customIDBackendName
 		n.thisStructLabel = getThisStructLabels(typeOfObject.Elem())
+		n._type = typeOfObject
 
 		labels := getNodeLabels(typeOfObject.Elem())
 		sort.Strings(labels)

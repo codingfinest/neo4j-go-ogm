@@ -79,7 +79,7 @@ func flattenParamters(parameters []map[string]interface{}) map[string]interface{
 
 func getCyhperFromClauses(cypherClauses map[clause][]string) string {
 	cypher := ``
-	claused := make(map[string]bool)
+	claused := map[string]bool{}
 	for _, clauseGroup := range clauseGroups {
 		for _, clause := range cypherClauses[clauseGroup] {
 			if !claused[clause] {
@@ -89,4 +89,21 @@ func getCyhperFromClauses(cypherClauses map[clause][]string) string {
 		}
 	}
 	return cypher
+}
+
+func indexOfString(slice []string, target string) int {
+	var index = -1
+	for i, s := range slice {
+		if s == target {
+			index = i
+			break
+		}
+	}
+	return index
+}
+
+func removeStringAt(slice []string, index int) []string {
+	slice[index] = slice[len(slice)-1]
+	slice[len(slice)-1] = ""
+	return slice[:len(slice)-1]
 }

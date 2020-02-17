@@ -23,10 +23,7 @@
 package gogm
 
 import (
-	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -61,8 +58,8 @@ type store interface {
 	// getByCustomID returns the graph with whose custom ID is interface{}
 	getByCustomID(reflect.Value, reflect.Type, interface{}) graph
 
-	// print prints the store
-	print()
+	// // print prints the store
+	// print()
 }
 
 type storeImpl struct {
@@ -250,7 +247,7 @@ func (s *storeImpl) getByCustomID(v reflect.Value, typeOfRefGraph reflect.Type, 
 func unwind(g graph, depth int) store {
 	visited := newstore(nil)
 	maxDepth := depth * 2
-	g.setCoordinate(&coordinate{0, 0, 0})
+	g.setCoordinate(&coordinate{0, 0})
 	queue := []graph{g}
 	for len(queue) > 0 {
 		if reflect.TypeOf(queue[0]) == typeOfPrivateRelationship && queue[0].getCoordinate().depth > maxDepth {
@@ -259,7 +256,7 @@ func unwind(g graph, depth int) store {
 		visited.save(queue[0])
 		for _, relatedGraph := range queue[0].getRelatedGraphs() {
 			if visited.get(relatedGraph) == nil {
-				relatedGraph.setCoordinate(&coordinate{queue[0].getCoordinate().depth + 1, 0, 0})
+				relatedGraph.setCoordinate(&coordinate{queue[0].getCoordinate().depth + 1, 0})
 				queue = append(queue, relatedGraph)
 			}
 		}
@@ -267,33 +264,30 @@ func unwind(g graph, depth int) store {
 		queue[0] = nil
 		queue = queue[1:]
 	}
-	for _, queued := range queue {
-		queued.setCoordinate(nil)
-	}
 	return visited
 }
 
-func (s *storeImpl) print() {
+// func (s *storeImpl) print() {
 
-	gPrint := func(g graph) string {
-		s := strconv.FormatInt(g.getID(), 10) + `|` + g.getLabel() + `
-		`
-		var rStrings []string
-		for _, r := range g.getRelatedGraphs() {
-			rStrings = append(rStrings, strconv.FormatInt(r.getID(), 10)+`|`+r.getLabel()+``)
-		}
-		s = s + strings.Join(rStrings, ", ") + `
-		`
-		return s
-	}
+// 	gPrint := func(g graph) string {
+// 		s := strconv.FormatInt(g.getID(), 10) + `|` + g.getLabel() + `
+// 		`
+// 		var rStrings []string
+// 		for _, r := range g.getRelatedGraphs() {
+// 			rStrings = append(rStrings, strconv.FormatInt(r.getID(), 10)+`|`+r.getLabel()+``)
+// 		}
+// 		s = s + strings.Join(rStrings, ", ") + `
+// 		`
+// 		return s
+// 	}
 
-	fmt.Println("**************** NODES ****************************")
-	for _, node := range s.nodes {
-		fmt.Println(gPrint(node))
-	}
+// 	fmt.Println("**************** NODES ****************************")
+// 	for _, node := range s.nodes {
+// 		fmt.Println(gPrint(node))
+// 	}
 
-	fmt.Println("**************** RELATIONSHIPS ****************************")
-	for _, relationship := range s.relationships {
-		fmt.Println(gPrint(relationship))
-	}
-}
+// 	fmt.Println("**************** RELATIONSHIPS ****************************")
+// 	for _, relationship := range s.relationships {
+// 		fmt.Println(gPrint(relationship))
+// 	}
+// }

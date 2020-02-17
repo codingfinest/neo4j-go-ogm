@@ -22,8 +22,6 @@
 
 package gogm
 
-import "github.com/neo4j/neo4j-go-driver/neo4j"
-
 type Session interface {
 	Load(object interface{}, ID interface{}, loadOptions *LoadOptions) error
 	LoadAll(objects interface{}, IDs interface{}, loadOptions *LoadOptions) error
@@ -42,7 +40,7 @@ type Session interface {
 	GetTransaction() *transaction
 	QueryForObject(object interface{}, cypher string, parameters map[string]interface{}) error
 	QueryForObjects(objects interface{}, cypher string, parameters map[string]interface{}) error
-	Query(cypher string, parameters map[string]interface{}) (neo4j.Result, error)
+	Query(cypher string, parameters map[string]interface{}, objects ...interface{}) ([]map[string]interface{}, error)
 	CountEntitiesOfType(object interface{}) (int64, error)
 	Count(cypher string, parameters map[string]interface{}) (int64, error)
 	RegisterEventListener(EventListener) error

@@ -41,11 +41,6 @@ func (f *field) getStructField() reflect.StructField {
 	return sf
 }
 
-func (f *field) isEntityMetadata(graphEntityType reflect.Type) bool {
-	//TODO embedsType check only one layer.support embedded
-	return !f.isIgnored() && f.getStructField().Anonymous && (f.getStructField().Type == graphEntityType || embedsType(f.getStructField().Type, graphEntityType))
-}
-
 func (f *field) isEntity(graphEntityType reflect.Type) bool {
 	if f.isIgnored() || f.getStructField().Anonymous || elem(f.getStructField().Type).Kind() != reflect.Struct {
 		return false

@@ -53,7 +53,7 @@ func getThisStructLabels(container reflect.Type) []string {
 		sort.Strings(taggedLabels)
 		return taggedLabels
 	}
-	return []string{strings.ToUpper(container.Name())}
+	return []string{container.Name()}
 }
 
 func getRelationshipType(container reflect.Type) string {

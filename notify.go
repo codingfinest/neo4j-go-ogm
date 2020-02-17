@@ -75,11 +75,16 @@ func notifyPostDelete(eventer eventer, g graph, lifeCycle lifeCycle) error {
 		return nil
 	}
 
-	g.setID(initialGraphID)
-	if g.getValue().IsValid() {
-		id := initialGraphID
-		unloadGraphID(g, &id)
+	//Update ID. initialGraphID (-1) means graph is deleted
+	if lifeCycle == DELETE {
+		g.setID(initialGraphID)
+		if g.getValue().IsValid() {
+			id := initialGraphID
+			unloadGraphID(g, &id)
+		}
 	}
+
+	//send notice
 	if g.getValue().IsValid() {
 		for _, eventListener := range eventer.eventListeners {
 			eventListener.OnPostDelete(event{g.getValue(), lifeCycle})

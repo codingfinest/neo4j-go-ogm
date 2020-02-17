@@ -111,15 +111,14 @@ func (l *loader) loadAll(objects interface{}, IDs interface{}, loadOptions *Load
 	return nil
 }
 
-//TODO object has to be in store and what happens when there is pass depth
 func (l *loader) reload(objects ...interface{}) error {
 	var err error
 	var graphs []graph
 	var IDer = getIDer(nil, nil)
 	var storedGraph graph
-	for _, object := range objects[0].([]interface{}) {
+	for _, object := range objects {
 		valueOfObject := reflect.ValueOf(object)
-		//object[i]: **DomainObject
+		//object: **DomainObject
 		if graphs, err = l.graphFactory.get(valueOfObject, map[int]bool{labels: true, relatedGraph: true}); err != nil {
 			return err
 		}
@@ -138,7 +137,9 @@ func (l *loader) reload(objects ...interface{}) error {
 		}
 
 		lo := NewLoadOptions()
-		lo.Depth = *storedGraph.getDepth() / 2
+		if storedGraph.getDepth() != nil {
+			lo.Depth = *storedGraph.getDepth() / 2
+		}
 		storedUnwound := unwind(storedGraph, lo.Depth)
 		var unloadedGraphs store
 		if unloadedGraphs, err = l.load(valueOfObject.Interface(), ID, lo, true); err != nil {
@@ -248,7 +249,7 @@ func (l *loader) loadAllOfGraphType(refGraph graph, IDs interface{}, loadOptions
 
 	// var visitedGraphsUnload []graph
 	for _, g := range toUnLoad.all() {
-		g.setCoordinate(&coordinate{0, 0, 0})
+		g.setCoordinate(&coordinate{0, 0})
 		var loadDepth = -1
 		if loadDepth, err = l.unloadDBObject(g, unloadedGrahps, loadOptions.Depth); err != nil {
 			return invalidValue, nil, err
@@ -258,20 +259,13 @@ func (l *loader) loadAllOfGraphType(refGraph graph, IDs interface{}, loadOptions
 			g.setDepth(&loadDepth)
 		}
 
-		// if loadDepth > -1 {
-		// 	for _, g := range visitedGraphsUnload {
-		// 		newDepth := loadDepth - g.getCoordinate().depth
-		// 		g.setDepth(&newDepth)
-		// 	}
-		// }
-
 	}
 
 	for _, g := range unloadedGrahps.all() {
 		g.setCoordinate(nil)
 		isRoot := toUnLoad.get(g) != nil
-		if stored := l.store.get(g); stored != nil && stored.getDepth() != nil && g.getDepth() != nil && *stored.getDepth() > *g.getDepth() {
-			if stored.getValue().IsValid() { //Should always be true? //Shuld notify?
+		if stored := l.store.get(g); !reload && stored != nil && stored.getDepth() != nil && g.getDepth() != nil && *stored.getDepth() > *g.getDepth() {
+			if stored.getValue().IsValid() {
 				for _, eventListener := range l.eventer.eventListeners {
 					eventListener.OnPostLoad(event{object: stored.getValue()})
 				}
@@ -393,8 +387,7 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int) (int, 
 		graphfield                                                *field
 		firstMetadata, graphFieldMetadata, otherNodeFieldMetadata metadata
 
-		queue = []graph{g}
-		// processedGraph []graph
+		queue       = []graph{g}
 		first       graph
 		loadedDepth = -1
 	)
@@ -403,10 +396,6 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int) (int, 
 	if depth > infiniteDepth {
 		depthToLoad = depth * 2
 	}
-
-	// if stored := l.store.get(g); stored != nil {
-	// 	g.setValue(stored.getValue())
-	// }
 
 	for len(queue) > 0 {
 		first = queue[0]
@@ -424,9 +413,6 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int) (int, 
 		}
 
 		if unloadedGrahps.get(first) == nil {
-			// if stored := l.store.get(first); stored != nil {
-			// 	stored.setProperties(first.getProperties())
-			// }
 			if first.getValue().IsValid() {
 				driverPropertiesAsStructFieldValues(first.getProperties(), firstMetadata.getPropertyStructFields())
 				unloadGraphProperties(first, firstMetadata.getPropertyStructFields())
@@ -435,18 +421,11 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int) (int, 
 		}
 
 		loadedDepth = first.getCoordinate().depth
-		// processedGraph = append(processedGraph, first)
 
 		for _, relatedGraph := range first.getRelatedGraphs() {
 
-			// if stored := l.store.get(relatedGraph); stored != nil {
-			// 	if stored.getValue().IsValid() {
-			// 		relatedGraph.setValue(stored.getValue())
-			// 	}
-			// }
-
 			if relatedGraph.getCoordinate() == nil {
-				relatedGraph.setCoordinate(&coordinate{first.getCoordinate().depth + 1, -1, 0})
+				relatedGraph.setCoordinate(&coordinate{first.getCoordinate().depth + 1, 0})
 			}
 
 			if relatedGraph.getValue() == nil {
