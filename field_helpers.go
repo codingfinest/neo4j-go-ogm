@@ -78,10 +78,6 @@ func propertyFilter(f *field) bool {
 	return !f.isIgnored() && !f.isEntity(typeOfPrivateNode) && !f.isEntity(typeOfPrivateRelationship) && f.getValue().CanInterface()
 }
 
-func isEmbeddedFieldFilter(f *field) bool {
-	return f.getStructField().Type.Kind() == reflect.Struct && f.getStructField().Anonymous
-}
-
 func isRelationshipFieldFilter(_type reflect.Type) fieldFilter {
 	return func(f *field) bool {
 		fType := f.getStructField().Type

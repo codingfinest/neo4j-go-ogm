@@ -38,33 +38,26 @@ func getInternalType(t reflect.Type) reflect.Type {
 	return internalType
 }
 
-//TODO use first field approach. //TODO Doc: To get the embedded node fiedl
-func getInternalGraphType(t reflect.Type) (reflect.Type, error) {
+//TODO Doc: To get the embedded node fiedl
+func getInternalGraphType(container reflect.Type) (reflect.Type, error) {
 
-	var (
-		internalType   reflect.Type
-		embeddedFields [][]*field
-		err            error
-	)
+	index := []int{0}
+	f := container.FieldByIndex(index)
 
-	if internalType = getInternalType(t); internalType != nil {
-		return internalType, err
-	}
+	for field0 := &f; field0 != nil; {
+		if internalType := getInternalType(field0.Type); internalType != nil {
+			return internalType, nil
+		}
 
-	if embeddedFields, err = getFeilds(reflect.New(t).Elem(), isEmbeddedFieldFilter); err != nil {
-		return nil, err
-	}
-
-	if len(embeddedFields[0]) == 0 {
-		return nil, errors.New("No embedded field found. The internal graph type of " + t.String() + " can't be determined")
-	}
-
-	for _, embeddedField := range embeddedFields[0] {
-		if internalType, err = getInternalGraphType(embeddedField.getStructField().Type); internalType != nil || err != nil {
-			return internalType, err
+		if field0.Type.Kind() == reflect.Struct && field0.Type.NumField() > 0 && field0.Type.FieldByIndex(index).Anonymous {
+			f = field0.Type.FieldByIndex(index)
+			field0 = &f
+		} else {
+			field0 = nil
 		}
 	}
-	return nil, errors.New("The internal graph type of " + t.String() + " can't be determined")
+
+	return nil, errors.New("The internal graph type of " + container.String() + " can't be determined")
 }
 
 func flattenParamters(parameters []map[string]interface{}) map[string]interface{} {
