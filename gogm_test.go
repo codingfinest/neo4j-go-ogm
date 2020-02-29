@@ -1367,3 +1367,30 @@ func TestQueryForObject_fail(t *testing.T) {
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
+
+func TestMoreThanOneEntityWithSameLabel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+
+	n1 := &Node1{}
+	n1Prime := &Node1Prime{}
+
+	g.Expect(session.Save(&n1, nil)).NotTo(HaveOccurred())
+	g.Expect(session.Save(&n1Prime, nil)).To(HaveOccurred(), "Can't have  2 structs with the same labels")
+
+	simpleRelationship := &SimpleRelationship{}
+	n4 := &Node4{}
+	n5 := &Node5{}
+	simpleRelationship.N4 = n4
+	simpleRelationship.N5 = n5
+
+	simpleRelationshipPrime := &SimpleRelationshipPrime{}
+	simpleRelationshipPrime.N4 = n4
+	simpleRelationshipPrime.N5 = n5
+	g.Expect(session.Save(&simpleRelationship, nil)).NotTo(HaveOccurred())
+	g.Expect(session.Save(&simpleRelationshipPrime, nil)).To(HaveOccurred(), "Can't have  2 structs with the same relaionship type")
+
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}

@@ -56,6 +56,14 @@ type Node1 struct {
 	N2   *Node2
 	Name string
 }
+
+type Node1Prime struct {
+	TestNodeEntity `gogm:"label:Node1,label:TestNodeEntity"`
+	N0             *Node0 `gogm:"direction:<-"`
+	N2             *Node2
+	Name           string
+}
+
 type Node2 struct {
 	TestNodeEntity
 	N1   *Node1 `gogm:"direction:<-"`

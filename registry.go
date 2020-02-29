@@ -23,6 +23,8 @@
 package gogm
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -31,16 +33,19 @@ import (
 type registry struct {
 	objects map[string]metadata //domain object struct name to metadata
 
-	labels             map[string][]metadata //labels to metadata
-	nodeLabels         map[string][]metadata
-	relationshipLabels map[string][]metadata
+	labels     map[string][]metadata //labels to metadata
+	registered map[reflect.Type]map[string]metadata
 
 	cypherExecuter cypherExecuter
 	objectsMu      sync.Mutex
 }
 
 func newRegistry(cypherExecuter cypherExecuter) *registry {
-	return &registry{map[string]metadata{}, map[string][]metadata{}, map[string][]metadata{}, map[string][]metadata{}, cypherExecuter, sync.Mutex{}}
+	registered := map[reflect.Type]map[string]metadata{}
+	registered[reflect.TypeOf(&nodeMetadata{})] = map[string]metadata{}
+	registered[reflect.TypeOf(&relationshipMetadata{})] = map[string]metadata{}
+
+	return &registry{map[string]metadata{}, map[string][]metadata{}, registered, cypherExecuter, sync.Mutex{}}
 }
 
 func (r *registry) get(t reflect.Type) (metadata, error) {
@@ -54,6 +59,10 @@ func (r *registry) get(t reflect.Type) (metadata, error) {
 		for _, label := range strings.Split(m.getStructLabel(), labelsDelim) {
 			r.labels[label] = append(r.labels[label], m)
 		}
+		if r.registered[reflect.TypeOf(m)][m.getStructLabel()] != nil {
+			return nil, errors.New(fmt.Sprint("Duplicate labels for an entity type. Type ", r.registered[reflect.TypeOf(m)][m.getStructLabel()].getType().String(), " with label ", r.registered[reflect.TypeOf(m)][m.getStructLabel()].getStructLabel(), " conflicts with ", m.getType().String(), " with label ", m.getStructLabel()))
+		}
+		r.registered[reflect.TypeOf(m)][m.getStructLabel()] = m
 		for _, statement := range getCreateSchemaStatement(m) {
 			if _, err = r.cypherExecuter.exec(statement, nil); err != nil {
 				return nil, err

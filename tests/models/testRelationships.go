@@ -45,3 +45,10 @@ type SimpleRelationship2 struct {
 	N4   *Node4 `gogm:"endNode"`
 	Name string
 }
+
+type SimpleRelationshipPrime struct {
+	TestRelationshipEntity `gogm:"reltype:SIMPLERELATIONSHIP"`
+	N5                     *Node5 `gogm:"startNode"`
+	N4                     *Node4 `gogm:"endNode"`
+	Name                   string
+}
