@@ -22,7 +22,7 @@
 
 package models
 
-import "github.com/codingfinest/neo4j-go-ogm/gogm"
+import gogm "github.com/codingfinest/neo4j-go-ogm"
 
 type TestRelationshipEntity struct {
 	gogm.Relationship

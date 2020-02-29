@@ -26,7 +26,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/codingfinest/neo4j-go-ogm/gogm"
+	gogm "github.com/codingfinest/neo4j-go-ogm"
 )
 
 type TestEventListener struct{}

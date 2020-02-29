@@ -25,7 +25,7 @@ package models
 import (
 	"time"
 
-	"github.com/codingfinest/neo4j-go-ogm/gogm"
+	gogm "github.com/codingfinest/neo4j-go-ogm"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
