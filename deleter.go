@@ -90,21 +90,20 @@ func (d *deleter) delete(object interface{}) error {
 	graphDeleteClauses[deleteClause] = append(graphDeleteClauses[deleteClause], delete)
 
 	cypher := getCyhperFromClauses(graphDeleteClauses)
+	if cypher != emptyString {
 
-	//Moe to line 111. just before calling execing the cypher
-	typeOfGraphToDelete := reflect.TypeOf(storedGraph)
-	for _, eventListener := range d.eventer.eventListeners {
-		eventListener.OnPreDelete(event{storedGraph.getValue(), DELETE})
-		if typeOfPrivateNode == typeOfGraphToDelete {
-			for _, relationship := range storedGraph.getRelatedGraphs() {
-				if relationship.getValue().IsValid() {
-					eventListener.OnPreDelete(event{relationship.getValue(), DELETE})
+		typeOfGraphToDelete := reflect.TypeOf(storedGraph)
+		for _, eventListener := range d.eventer.eventListeners {
+			eventListener.OnPreDelete(event{storedGraph.getValue(), DELETE})
+			if typeOfPrivateNode == typeOfGraphToDelete {
+				for _, relationship := range storedGraph.getRelatedGraphs() {
+					if relationship.getValue().IsValid() {
+						eventListener.OnPreDelete(event{relationship.getValue(), DELETE})
+					}
 				}
 			}
 		}
-	}
 
-	if cypher != emptyString {
 		if record, err = neo4j.Single(d.cypherExecuter.exec(cypher, flattenParamters(parameters))); err != nil {
 			return err
 		}

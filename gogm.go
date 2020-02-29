@@ -80,10 +80,11 @@ var clauseGroups = [5]clause{
 type clause int
 type clauses map[clause][]string
 
-type LogLevel neo4j.LogLevel
+type LogLevel int
 
 const (
-	ERROR   LogLevel = 1
+	NONE    LogLevel = 0
+	ERROR            = 1
 	WARNING          = 2
 	INFO             = 3
 	DEBUG            = 4
@@ -161,7 +162,9 @@ func getDriver(uri string, username string, password string, logLevel LogLevel) 
 	)
 
 	if driver, err = neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""), func(config *neo4j.Config) {
-		config.Log = neo4j.ConsoleLogger(logLevels[logLevel])
+		if logLevel != NONE {
+			config.Log = neo4j.ConsoleLogger(logLevels[logLevel])
+		}
 	}); err != nil {
 		return nil, err
 	}
