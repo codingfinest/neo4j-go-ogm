@@ -39,7 +39,7 @@ func (graphFactory graphFactory) get(v reflect.Value, settings map[int]bool) ([]
 
 	var metadata metadata
 	var graphs []graph
-	var domainObjectType = elem2(v.Type())
+	var domainObjectType = elem(v.Type())
 	var err error
 
 	if metadata, err = graphFactory.registry.get(domainObjectType); err != nil {

@@ -168,7 +168,7 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 			relationshipAStructField := relationshipFieldA.getStructField()
 			n.relationshipAStructFields = append(n.relationshipAStructFields, relationshipAStructField)
 
-			labels = getNodeLabels(elem2(relationshipAStructField.Type).Elem())
+			labels = getNodeLabels(elem(relationshipAStructField.Type).Elem())
 			sort.Strings(labels)
 			n.blacklistLabels(labels)
 			relationshipANodeLabel := strings.Join(labels, labelsDelim)
@@ -218,7 +218,7 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 			n.relationshipBStructFields = append(n.relationshipBStructFields, relationshipFieldB.getStructField())
 
 			relationshipBStructField := relationshipFieldB.getStructField()
-			relationshipEntityType := elem2(relationshipBStructField.Type)
+			relationshipEntityType := elem(relationshipBStructField.Type)
 
 			if metadata, err = n.registry.get(relationshipEntityType); err != nil {
 				return nil, err
@@ -231,12 +231,12 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 				return nil, errors.New("Node entity '" + typeOfObject.String() + "' has an unrelated relationship entity '" + relationshipEntityType.String() + "'")
 			}
 
-			labels = getNodeLabels(elem2(fromNodeStructField.Type).Elem())
+			labels = getNodeLabels(elem(fromNodeStructField.Type).Elem())
 			sort.Strings(labels)
 			n.blacklistLabels(labels)
 			fromNodeLabel := strings.Join(labels, labelsDelim)
 
-			labels = getNodeLabels(elem2(toNodeStructField.Type).Elem())
+			labels = getNodeLabels(elem(toNodeStructField.Type).Elem())
 			sort.Strings(labels)
 			n.blacklistLabels(labels)
 			toNodeLabel := strings.Join(labels, labelsDelim)

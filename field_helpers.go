@@ -91,7 +91,7 @@ func isRelationshipFieldFilter(_type reflect.Type) fieldFilter {
 func isRelationshipEndPointFieldFilter(endpoint string) fieldFilter {
 	return func(f *field) bool {
 		return !f.isIgnored() && !f.getStructField().Anonymous &&
-			f.getValue().Kind() == reflect.Ptr && elem(f.getStructField().Type).Kind() == reflect.Struct &&
+			f.getValue().Kind() == reflect.Ptr && elem(f.getStructField().Type).Elem().Kind() == reflect.Struct &&
 			f.isTagged(endpoint)
 	}
 }

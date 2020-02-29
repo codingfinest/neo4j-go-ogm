@@ -98,3 +98,15 @@ func removeStringAt(slice []string, index int) []string {
 	slice[len(slice)-1] = ""
 	return slice[:len(slice)-1]
 }
+
+//Return the simple domain object type of a simple or compound
+//type t. Example of a simple type is *DomainObject. Example of
+//a compound type is *[]*DomainObject.
+func elem(t reflect.Type) reflect.Type {
+	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice && t.Kind() != reflect.Ptr {
+		return t
+	} else if t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct {
+		return t
+	}
+	return elem(t.Elem())
+}

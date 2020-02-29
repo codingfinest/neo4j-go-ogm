@@ -65,7 +65,7 @@ func (l *loader) load(object interface{}, ID interface{}, loadOptions *LoadOptio
 	if loadOptions == nil {
 		loadOptions = NewLoadOptions()
 	}
-	dummyValue := reflect.New(elem2(reflect.TypeOf(object)).Elem())
+	dummyValue := reflect.New(elem(reflect.TypeOf(object)).Elem())
 	graphs[0].setValue(&dummyValue)
 	sliceOfObjs, unloadedGraphs, err := l.loadAllOfGraphType(graphs[0], ptrToSliceIDs.Elem().Interface(), loadOptions, reload)
 
@@ -99,7 +99,7 @@ func (l *loader) loadAll(objects interface{}, IDs interface{}, loadOptions *Load
 		loadOptions = NewLoadOptions()
 	}
 
-	dummyValue := reflect.New(elem2(reflect.TypeOf(objects)).Elem())
+	dummyValue := reflect.New(elem(reflect.TypeOf(objects)).Elem())
 	graphs[0].setValue(&dummyValue)
 	if sliceOfObjs, _, err = l.loadAllOfGraphType(graphs[0], IDs, loadOptions, false); err != nil {
 		return err
@@ -448,7 +448,7 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int, relate
 					continue
 				}
 
-				typeOfGraphField := elem2(graphfield.getStructField().Type)
+				typeOfGraphField := elem(graphfield.getStructField().Type)
 				if graphFieldMetadata, err = l.registry.get(typeOfGraphField); err != nil {
 					return -1, err
 				}

@@ -66,9 +66,9 @@ func getRelationshipType(container reflect.Type) string {
 func (f *field) getRelType() string {
 	direction := f.getEffectiveDirection()
 
-	relType := f.parent.Type().Name() + defaultRelTypeDelim + elem(f.getStructField().Type).Name()
+	relType := f.parent.Type().Name() + defaultRelTypeDelim + elem(f.getStructField().Type).Elem().Name()
 	if direction == incoming {
-		relType = elem(f.getStructField().Type).Name() + defaultRelTypeDelim + f.parent.Type().Name()
+		relType = elem(f.getStructField().Type).Elem().Name() + defaultRelTypeDelim + f.parent.Type().Name()
 
 	}
 

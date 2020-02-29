@@ -42,17 +42,11 @@ func (f *field) getStructField() reflect.StructField {
 }
 
 func (f *field) isEntity(graphEntityType reflect.Type) bool {
-	if f.isIgnored() || f.getStructField().Anonymous || elem(f.getStructField().Type).Kind() != reflect.Struct {
+	if fieldType := elem(f.getStructField().Type); f.isIgnored() || f.getStructField().Anonymous || fieldType.Kind() != reflect.Ptr || fieldType.Elem().Kind() != reflect.Struct {
 		return false
 	}
 
-	fieldType := elem2(f.getStructField().Type)
-
-	if fieldType.Kind() != reflect.Ptr || fieldType.Elem().Kind() != reflect.Struct {
-		return false
-	}
-
-	if internalGrpahType := getInternalGraphType(elem2(f.getStructField().Type).Elem()); internalGrpahType == graphEntityType {
+	if internalGrpahType := getInternalGraphType(elem(f.getStructField().Type).Elem()); internalGrpahType == graphEntityType {
 		return true
 	}
 

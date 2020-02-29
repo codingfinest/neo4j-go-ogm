@@ -250,7 +250,7 @@ func extractRelationshipTypeB(n *node, ID func(graph), registry *registry) func(
 			metadata metadata
 			err      error
 		)
-		if metadata, err = registry.get(elem2(f.getValue().Type())); err != nil {
+		if metadata, err = registry.get(elem(f.getValue().Type())); err != nil {
 			return nil, err
 		}
 
