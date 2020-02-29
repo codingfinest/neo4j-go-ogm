@@ -241,17 +241,19 @@ func (l *loader) loadAllOfGraphType(refGraph graph, IDs interface{}, loadOptions
 	toUnLoad := newstore(nil)
 	visitedGraphs := newstore(nil)
 	unloadedGrahps := newstore(nil)
+	relatedValues := make(map[reflect.Type]map[int64]map[int64]bool)
+	relatedValues[typeOfPrivateNode] = map[int64]map[int64]bool{}
+	relatedValues[typeOfPrivateRelationship] = map[int64]map[int64]bool{}
 
 	for _, record := range records {
 		refGraph.setID(record.GetByIndex(1).(int64))
 		toUnLoad.save(l.getGraphToLoadFromDBResult(record.GetByIndex(0).(neo4j.Path), record.GetByIndex(2).([]interface{}), refGraph, visitedGraphs, loadOptions.Depth))
 	}
 
-	// var visitedGraphsUnload []graph
 	for _, g := range toUnLoad.all() {
 		g.setCoordinate(&coordinate{0, 0})
 		var loadDepth = -1
-		if loadDepth, err = l.unloadDBObject(g, unloadedGrahps, loadOptions.Depth); err != nil {
+		if loadDepth, err = l.unloadDBObject(g, unloadedGrahps, loadOptions.Depth, relatedValues); err != nil {
 			return invalidValue, nil, err
 		}
 
@@ -264,7 +266,7 @@ func (l *loader) loadAllOfGraphType(refGraph graph, IDs interface{}, loadOptions
 	for _, g := range unloadedGrahps.all() {
 		g.setCoordinate(nil)
 		isRoot := toUnLoad.get(g) != nil
-		if stored := l.store.get(g); !reload && stored != nil && stored.getDepth() != nil && g.getDepth() != nil && *stored.getDepth() > *g.getDepth() {
+		if stored := l.store.get(g); !reload && stored != nil && stored.getDepth() != nil && g.getDepth() != nil && *stored.getDepth() >= *g.getDepth() {
 			if stored.getValue().IsValid() {
 				for _, eventListener := range l.eventer.eventListeners {
 					eventListener.OnPostLoad(event{object: stored.getValue()})
@@ -380,12 +382,12 @@ func (l *loader) getGraphToLoadFromDBResult(path neo4j.Path, isDirectionInverted
 	return graphToLoad
 }
 
-func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int) (int, error) {
+func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int, relatedValues map[reflect.Type]map[int64]map[int64]bool) (int, error) {
 
 	var (
-		err                                                       error
-		graphfield                                                *field
-		firstMetadata, graphFieldMetadata, otherNodeFieldMetadata metadata
+		err                               error
+		graphfield                        *field
+		firstMetadata, graphFieldMetadata metadata
 
 		queue       = []graph{g}
 		first       graph
@@ -422,83 +424,58 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int) (int, 
 
 		loadedDepth = first.getCoordinate().depth
 
+		if relatedValues[reflect.TypeOf(first)][first.getID()] == nil {
+			relatedValues[reflect.TypeOf(first)][first.getID()] = map[int64]bool{}
+		}
+
 		for _, relatedGraph := range first.getRelatedGraphs() {
+			if relatedValues[reflect.TypeOf(relatedGraph)][relatedGraph.getID()] == nil {
+				relatedValues[reflect.TypeOf(relatedGraph)][relatedGraph.getID()] = map[int64]bool{}
+			}
 
 			if relatedGraph.getCoordinate() == nil {
 				relatedGraph.setCoordinate(&coordinate{first.getCoordinate().depth + 1, 0})
 			}
 
-			if relatedGraph.getValue() == nil {
-				if first.getValue().IsValid() {
-					if graphfield, err = firstMetadata.getGraphField(first, relatedGraph); err != nil {
-						return -1, err
-					}
+			// Related graph Value has not been added to the current graph Value
+			if !relatedValues[reflect.TypeOf(first)][first.getID()][relatedGraph.getID()] {
 
-					if graphfield == nil {
-						continue
-					}
-
-					typeOfGraphField := elem2(graphfield.getStructField().Type)
-					if graphFieldMetadata, err = l.registry.get(typeOfGraphField); err != nil {
-						return -1, err
-					}
-
-					//first is Node and relatedGraph is Relationship of type B or first is Relationship of type B and relatedGraph is Node
-					//They are syncable
-					if reflect.TypeOf(firstMetadata) != reflect.TypeOf(graphFieldMetadata) {
-						value := reflect.New(typeOfGraphField.Elem())
-						addDomainObject(graphfield, value)
-						relatedGraph.setValue(&value)
-
-						// if graphfield, err = graphFieldMetadata.getGraphField(relatedGraph, first); err != nil {
-						// 	return nil, -1, err
-						// }
-
-						// if graphfield != nil {
-						// 	addDomainObject(graphfield, *first.getValue())
-						// }
-					} else {
-						//first is Node and relatedGraph is Relationship of type A
-						relatedGraph.setValue(&invalidValue)
-					}
-
-				} else {
-					//first is a Relationship type A. relatedGraph is a Node whose Value
-					//can be determined from the other Node in the relationship
-					otherNode := first.getRelatedGraphs()[startNode]
-					if otherNode.getValue() == nil {
-						otherNode = first.getRelatedGraphs()[endNode]
-					}
-
-					if otherNodeFieldMetadata, err = l.registry.get(otherNode.getValue().Type()); err != nil {
-						return -1, err
-					}
-
-					if graphfield, err = otherNodeFieldMetadata.getGraphField(otherNode, first); err != nil {
-						return -1, err
-					}
-
-					if graphfield == nil {
-						continue
-					}
-
-					typeOfGraphField := elem2(graphfield.getStructField().Type)
-					if graphFieldMetadata, err = l.registry.get(typeOfGraphField); err != nil {
-						return -1, err
-					}
-
-					value := reflect.New(typeOfGraphField.Elem())
-					addDomainObject(graphfield, value)
-					relatedGraph.setValue(&value)
-
-					// if graphfield, err = graphFieldMetadata.getGraphField(relatedGraph, first); err != nil {
-					// 	return nil, -1, err
-					// }
-
-					// if graphfield != nil {
-					// 	addDomainObject(graphfield, *otherNode.getValue())
-					// }
+				if graphfield, err = firstMetadata.getGraphField(first, relatedGraph); err != nil {
+					return -1, err
 				}
+
+				if graphfield == nil {
+					continue
+				}
+
+				typeOfGraphField := elem2(graphfield.getStructField().Type)
+				if graphFieldMetadata, err = l.registry.get(typeOfGraphField); err != nil {
+					return -1, err
+				}
+
+				value := reflect.New(typeOfGraphField.Elem())
+
+				addDomainObject(graphfield, value)
+				relatedGraph.setValue(&value)
+
+				//first is a Node and related graph field is a Node  field. relatedGraph is relationship A
+				if first.getValue().IsValid() && reflect.TypeOf(firstMetadata) == reflect.TypeOf(graphFieldMetadata) {
+					relatedGraph.setValue(&invalidValue)
+					otherNode := relatedGraph.getRelatedGraphs()[startNode]
+					if otherNode.getID() == first.getID() {
+						otherNode = relatedGraph.getRelatedGraphs()[endNode]
+					}
+					otherNode.setValue(&value)
+
+					relatedValues[reflect.TypeOf(relatedGraph)][relatedGraph.getID()][otherNode.getID()] = true
+					if relatedValues[reflect.TypeOf(otherNode)][otherNode.getID()] == nil {
+						relatedValues[reflect.TypeOf(otherNode)][otherNode.getID()] = map[int64]bool{}
+					}
+					relatedValues[reflect.TypeOf(otherNode)][otherNode.getID()][relatedGraph.getID()] = true
+				}
+				relatedValues[reflect.TypeOf(first)][first.getID()][relatedGraph.getID()] = true
+				relatedValues[reflect.TypeOf(relatedGraph)][relatedGraph.getID()][first.getID()] = true
+
 			}
 
 			if unloadedGrahps.get(relatedGraph) == nil {

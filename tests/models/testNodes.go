@@ -43,6 +43,7 @@ type SimpleNode struct {
 type Node0 struct {
 	TestNodeEntity
 	Name             string
+	ByteProp         []byte
 	MapProps         map[string]int
 	AliasedMapProps1 map[string]*string `gogm:"name:aliasedMapProp"`
 	InvalidIDMapProp map[int]int

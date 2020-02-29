@@ -22,11 +22,6 @@
 
 package gogm
 
-import (
-	"errors"
-	"reflect"
-)
-
 func notifyPreSaveGraph(g graph, eventer eventer, registry *registry) error {
 
 	if g.getValue().IsValid() {
@@ -47,11 +42,6 @@ func notifyPreSaveGraph(g graph, eventer eventer, registry *registry) error {
 		}
 		g.setLabel(label)
 		g.setProperties(metadata.getProperties(*g.getValue()))
-
-		customIDName, customIDValue := metadata.getCustomID(*g.getValue())
-		if customIDName != emptyString && customIDValue.Type().Kind() == reflect.Ptr && customIDValue.IsNil() {
-			return errors.New("Custom ID cannot be nil in " + g.getValue().Type().String())
-		}
 
 	}
 

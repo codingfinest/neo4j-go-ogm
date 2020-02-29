@@ -99,53 +99,12 @@ func (rm *relationshipMetadata) getLabel(v reflect.Value) (string, error) {
 
 func (rm *relationshipMetadata) getGraphField(g graph, relatedGraph graph) (*field, error) {
 
-	var relatedGraphField *field
 	relatedGraphIndex := startNode
 	if relatedGraph == g.getRelatedGraphs()[endNode] {
 		relatedGraphIndex = endNode
 	}
 
-	if g.getValue().IsValid() {
-		relatedGraphField = &field{
-			parent: g.getValue().Elem(),
-			name:   rm.endpoints[relatedGraphIndex].Name}
-	} else {
-		relatedGraphs := g.getRelatedGraphs()
-		otherNode := relatedGraphs[(relatedGraphIndex+1)%relationshipRelatedGraphLen]
-		relDirection := outgoing
-		if otherNode == relatedGraphs[endNode] {
-			relDirection = incoming
-		}
-		var (
-			metadata metadata
-			err      error
-		)
-		if metadata, err = rm.registry.get(otherNode.getValue().Type()); err != nil {
-			return nil, err
-		}
-
-		nodeMetadata := metadata.(*nodeMetadata)
-		relatedGraphStructLabel := nodeMetadata.filterStructLabel(relatedGraph)
-		otherNodeGraphStructLabel := nodeMetadata.filterStructLabel(otherNode)
-		var otherNodeStructField *reflect.StructField
-		if relatedGraphStructLabel == otherNodeGraphStructLabel {
-			otherNodeStructField = nodeMetadata.getSameEntityRelStructFields(g.getLabel(), relDirection)
-		} else {
-			fromLabel := otherNodeGraphStructLabel
-			toLabel := relatedGraphStructLabel
-			if relDirection == incoming {
-				fromLabel = relatedGraphStructLabel
-				toLabel = otherNodeGraphStructLabel
-			}
-			otherNodeStructField = nodeMetadata.getDifferentEntityRelStructFields(g.getLabel(), fromLabel, toLabel)
-		}
-
-		if otherNodeStructField != nil {
-			relatedGraphField = &field{
-				parent: otherNode.getValue().Elem(),
-				name:   otherNodeStructField.Name}
-		}
-
-	}
-	return relatedGraphField, nil
+	return &field{
+		parent: g.getValue().Elem(),
+		name:   rm.endpoints[relatedGraphIndex].Name}, nil
 }

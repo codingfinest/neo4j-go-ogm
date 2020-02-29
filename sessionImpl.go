@@ -52,7 +52,6 @@ func (s *sessionImpl) Reload(objects ...interface{}) error {
 	return s.loader.reload(objects...)
 }
 
-//Save is a saver
 func (s *sessionImpl) Save(objects interface{}, saveOptions *SaveOptions) error {
 	return s.saver.save(objects, saveOptions)
 }

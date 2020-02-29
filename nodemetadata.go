@@ -168,15 +168,6 @@ func (nm *nodeMetadata) setSameEntityRelStructFields(typeOfObject reflect.Type, 
 	return nil
 }
 
-func (nm *nodeMetadata) getSameEntityRelStructFields(relType string, relDirection direction) *reflect.StructField {
-
-	if nm.sameEntityRelStructFields[relType] != nil && nm.sameEntityRelStructFields[relType][relDirection] != nil {
-		return nm.sameEntityRelStructFields[relType][relDirection]
-	}
-
-	return nil
-}
-
 func (nm *nodeMetadata) setDifferentEntityRelStructFields(typeOfObject reflect.Type, relType string, fromLabel string, toLabel string, relationshipStructField *reflect.StructField) error {
 	if nm.differentEntityRelStructFields[relType] == nil {
 		nm.differentEntityRelStructFields[relType] = map[string]map[string]*reflect.StructField{}
@@ -191,13 +182,6 @@ func (nm *nodeMetadata) setDifferentEntityRelStructFields(typeOfObject reflect.T
 
 	nm.differentEntityRelStructFields[relType][fromLabel][toLabel] = relationshipStructField
 
-	return nil
-}
-
-func (nm *nodeMetadata) getDifferentEntityRelStructFields(relType string, fromLabel string, toLabel string) *reflect.StructField {
-	if nm.differentEntityRelStructFields[relType] != nil && nm.differentEntityRelStructFields[relType][fromLabel] != nil && nm.differentEntityRelStructFields[relType][fromLabel][toLabel] != nil {
-		return nm.differentEntityRelStructFields[relType][fromLabel][toLabel]
-	}
 	return nil
 }
 

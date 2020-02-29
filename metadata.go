@@ -103,8 +103,8 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 	typeOfObject := t
 	valueOfObject := reflect.New(t.Elem()) //Dummy value
 
-	if typeOfInternalGraph, err = getInternalGraphType(typeOfObject.Elem()); err != nil {
-		return nil, err
+	if typeOfInternalGraph = getInternalGraphType(typeOfObject.Elem()); typeOfInternalGraph == nil {
+		return nil, errors.New("Metadata of type " + t.String() + " can't be generated. It must embed the OGM Node or Relationship Object directly or indirectly")
 	}
 
 	if propertyStructFields, err = getPropertyStructField(typeOfObject.Elem()); err != nil {
@@ -133,12 +133,11 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 			return nil, errors.New("Expected 1 field to be tagged 'endNode' in type " + typeOfObject.String())
 		}
 
-		//TODO check that the start/endstruct pointed to are Node
-		if endpointFields[startNode][0].getStructField().Type.Kind() != reflect.Ptr || endpointFields[startNode][0].getStructField().Type.Elem().Kind() != reflect.Struct {
+		if endpointFields[startNode][0].getStructField().Type.Kind() != reflect.Ptr || endpointFields[startNode][0].getStructField().Type.Elem().Kind() != reflect.Struct || getInternalGraphType(endpointFields[startNode][0].getStructField().Type.Elem()) != typeOfPrivateNode {
 			return nil, errors.New("Start node for relationship " + typeOfObject.String() + " must be a point to a Node struct")
 		}
 
-		if endpointFields[endNode][0].getStructField().Type.Kind() != reflect.Ptr || endpointFields[endNode][0].getStructField().Type.Elem().Kind() != reflect.Struct {
+		if endpointFields[endNode][0].getStructField().Type.Kind() != reflect.Ptr || endpointFields[endNode][0].getStructField().Type.Elem().Kind() != reflect.Struct || getInternalGraphType(endpointFields[startNode][0].getStructField().Type.Elem()) != typeOfPrivateNode {
 			return nil, errors.New("End node for relationship " + typeOfObject.String() + " must be a point to a Node struct")
 		}
 
@@ -221,7 +220,6 @@ func getMetadata(t reflect.Type, registry *registry) (metadata, error) {
 			relationshipBStructField := relationshipFieldB.getStructField()
 			relationshipEntityType := elem2(relationshipBStructField.Type)
 
-			//TODO could there be an infinite loop here?
 			if metadata, err = n.registry.get(relationshipEntityType); err != nil {
 				return nil, err
 			}

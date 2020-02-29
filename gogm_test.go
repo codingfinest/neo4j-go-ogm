@@ -157,17 +157,27 @@ func TestRelationshipSaveWithUpdate(t *testing.T) {
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.RegisterEventListener(eventListener)).NotTo(HaveOccurred())
 
-	simpleRelationship := &SimpleRelationship{}
+	simpleRelationship1 := &SimpleRelationship{}
 	n5 := &Node5{}
 	n4 := &Node4{}
-	simpleRelationship.N4 = n4
-	simpleRelationship.N5 = n5
-	g.Expect(session.Save(&simpleRelationship, nil)).NotTo(HaveOccurred())
-	simpleRelationship.Name = "test Prop"
-	g.Expect(session.Save(&simpleRelationship, nil)).NotTo(HaveOccurred())
+	simpleRelationship1.N4 = n4
+	simpleRelationship1.N5 = n5
 
-	g.Expect(simpleRelationship.UpdatedAt).ToNot(BeZero())
-	g.Expect(*simpleRelationship.ID > -1).To(BeTrue())
+	simpleRelationship2 := &SimpleRelationship{}
+	simpleRelationship2.N4 = n4
+	simpleRelationship2.N5 = n5
+
+	simpleRelationships := []*SimpleRelationship{simpleRelationship1, simpleRelationship2}
+
+	g.Expect(session.Save(&simpleRelationships, nil)).NotTo(HaveOccurred())
+	simpleRelationship1.Name = "test Prop"
+	g.Expect(session.Save(&simpleRelationship1, gogm.NewSaveOptions())).NotTo(HaveOccurred())
+
+	g.Expect(simpleRelationship1.UpdatedAt).ToNot(BeZero())
+	g.Expect(*simpleRelationship1.ID > -1).To(BeTrue())
+
+	g.Expect(simpleRelationship2.UpdatedAt).To(BeZero())
+	g.Expect(*simpleRelationship2.ID > -1).To(BeTrue())
 
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
@@ -777,24 +787,48 @@ func TestSaveToDepthFromNode(t *testing.T) {
 	so.Depth = 0
 	g.Expect(session.Save(&n0, so)).NotTo(HaveOccurred())
 
+	lo := gogm.NewLoadOptions()
+	lo.Depth = -1
+	var loadedN0 *Node0
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.Load(&loadedN0, *n0.ID, lo)).NotTo(HaveOccurred())
+	g.Expect(loadedN0.Name).To(Equal(n0.Name))
+	g.Expect(loadedN0.N1).To(BeNil())
+
 	so.Depth = 2
 	g.Expect(session.Save(&n0, so)).NotTo(HaveOccurred())
 
-	//TODO load indefitely and verify save length
+	loadedN0 = nil
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.Load(&loadedN0, *n0.ID, lo)).NotTo(HaveOccurred())
+	g.Expect(loadedN0.N1.N2.Name).To(Equal(n0.N1.N2.Name))
+	g.Expect(loadedN0.N1.N2.N3).To(BeNil())
 
 	so.Depth = 0
 	n0.Name = "31"
 	g.Expect(session.Save(&n0, so)).NotTo(HaveOccurred())
 
+	loadedN0 = nil
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.Load(&loadedN0, *n0.ID, lo)).NotTo(HaveOccurred())
+	g.Expect(loadedN0.Name).To(Equal(n0.Name))
+	g.Expect(loadedN0.N1.N2.Name).To(Equal(n0.N1.N2.Name))
+	g.Expect(loadedN0.N1.N2.N3).To(BeNil())
+
 	so.Depth = 4
 	g.Expect(session.Save(&n0, so)).NotTo(HaveOccurred())
+
+	loadedN0 = nil
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.Load(&loadedN0, *n0.ID, lo)).NotTo(HaveOccurred())
+	g.Expect(loadedN0.N1.N2.Name).To(Equal(n0.N1.N2.Name))
+	g.Expect(loadedN0.N1.N2.N3.N4.Name).To(Equal(n4.Name))
 
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
 
 func TestSaveToDepthFromRelationship(t *testing.T) {
-	//TODO add verifications
 	g := NewGomegaWithT(t)
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
@@ -808,12 +842,38 @@ func TestSaveToDepthFromRelationship(t *testing.T) {
 
 	n5.N4 = n4
 
+	simpleRelationship.Name = "r1"
+	simpleRelationship.TestID = "r1ID"
+
+	n4.Name = "n4"
+	n5.Name = "n5"
+
 	so := gogm.NewSaveOptions()
 	so.Depth = 0
 	g.Expect(session.Save(&simpleRelationship, so)).NotTo(HaveOccurred())
 
+	var loadedSimpleRelationship *SimpleRelationship
+
+	lo := gogm.NewLoadOptions()
+	lo.Depth = -1
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.Load(&loadedSimpleRelationship, simpleRelationship.TestID, lo)).NotTo(HaveOccurred())
+	g.Expect(loadedSimpleRelationship.Name).To(Equal(simpleRelationship.Name))
+	g.Expect(loadedSimpleRelationship.N5.Name).To(Equal(n5.Name))
+	g.Expect(loadedSimpleRelationship.N5.N4).To(BeNil())
+	g.Expect(loadedSimpleRelationship.N4.Name).To(Equal(n4.Name))
+
 	so.Depth = 2
 	g.Expect(session.Save(&simpleRelationship, so)).NotTo(HaveOccurred())
+
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.Load(&loadedSimpleRelationship, simpleRelationship.TestID, lo)).NotTo(HaveOccurred())
+
+	if loadedSimpleRelationship.N5.N4 == nil {
+		g.Expect(loadedSimpleRelationship.N4.N5s[0].Name).To(Equal(n5.Name))
+	} else {
+		g.Expect(loadedSimpleRelationship.N5.N4.Name).To(Equal(n4.Name))
+	}
 
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
@@ -902,6 +962,8 @@ func TestTransactions(t *testing.T) {
 	so := gogm.NewSaveOptions()
 	so.Depth = 2
 	g.Expect(session.Save(&n0, so)).NotTo(HaveOccurred())
+	g.Expect(n3.ID).To(BeNil())
+	g.Expect(n4.ID).To(BeNil())
 
 	tx, err := session.BeginTransaction()
 	g.Expect(err).NotTo(HaveOccurred())
@@ -1116,6 +1178,41 @@ func TestCount(t *testing.T) {
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
 
+func TestLoadAll(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+
+	simpleRelationship1 := SimpleRelationship{}
+	n5 := &Node5{}
+	n4 := &Node4{}
+	simpleRelationship1.N4 = n4
+	simpleRelationship1.N5 = n5
+
+	simpleRelationship2 := SimpleRelationship{}
+	simpleRelationship2.N4 = n4
+	simpleRelationship2.N5 = n5
+
+	simpleRelationships := []*SimpleRelationship{&simpleRelationship1, &simpleRelationship2}
+	loadContainter := []*SimpleRelationship{}
+
+	simpleRelationship1.TestID = "simpleRelationship1"
+	simpleRelationship2.TestID = "simpleRelationship2"
+
+	g.Expect(session.Save(&simpleRelationships, nil)).NotTo(HaveOccurred())
+	g.Expect(session.LoadAll(&loadContainter, nil, nil)).ToNot(HaveOccurred())
+
+	g.Expect(len(loadContainter)).To(Equal(2))
+
+	loadContainter = []*SimpleRelationship{}
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+	g.Expect(session.LoadAll(&loadContainter, []string{simpleRelationship1.TestID}, nil)).ToNot(HaveOccurred())
+	g.Expect(len(loadContainter)).To(Equal(1))
+
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
+
 func TestMappedProperties(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
@@ -1147,7 +1244,6 @@ func TestMappedProperties(t *testing.T) {
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
 
-//TODO Document time. use *time.Time and not time.Time
 func TestSavingAndLoadingTime(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
@@ -1174,6 +1270,31 @@ func TestSavingAndLoadingTime(t *testing.T) {
 	g.Expect(session.Load(&loadedN10, *n10.ID, nil)).NotTo(HaveOccurred())
 	n10.ClearMetaTimestamps()
 	g.Expect(loadedN10).To(Equal(n10))
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
+
+func TestByteProperty(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.RegisterEventListener(eventListener)).NotTo(HaveOccurred())
+	n0 := &Node0{}
+	n0.ByteProp = []byte("seafood")
+	g.Expect(session.Save(&n0, nil)).NotTo(HaveOccurred())
+
+	//update
+	n0_1 := &Node0{}
+	n0_1.ID = n0.ID
+	n0_1.ByteProp = []byte("sea")
+	g.Expect(session.Save(&n0_1, nil)).NotTo(HaveOccurred())
+	g.Expect(n0_1.UpdatedAt).NotTo(BeZero())
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+
+	var loadedN0 *Node0
+	g.Expect(session.Load(&loadedN0, *n0.ID, nil)).NotTo(HaveOccurred())
+
+	n0_1.ClearMetaTimestamps()
+	g.Expect(loadedN0).To(Equal(n0_1))
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
@@ -1246,5 +1367,3 @@ func TestQueryForObject_fail(t *testing.T) {
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
-
-//Test that loading with ID nil loads all the type

@@ -22,37 +22,28 @@
 
 package gogm
 
-type SortDirection uint
-
-const (
-	//Ascending
-	ASC SortDirection = iota
-
-	//Desending
-	DESC
-)
-
-//Not supported
-type SortOptions struct {
-	OrderBy       []string
-	sortDirection SortDirection
-}
-
+//LoadOptions represents options used for loading database objects
 type LoadOptions struct {
-	Sort  *SortOptions
 	Depth int
 }
 
+//SaveOptions represents options used for saving database objects
 type SaveOptions struct {
 	Depth int
 }
 
+//DeleteOptions represents options used for saving database objects. Currently, not applicatble to this version of the OGM
+type DeleteOptions struct {
+}
+
+//NewLoadOptions creates LoadOptions with defaults
 func NewLoadOptions() *LoadOptions {
 	lo := &LoadOptions{}
 	lo.Depth = 1
 	return lo
 }
 
+//NewSaveOptions creates SaveOptions with defaults
 func NewSaveOptions() *SaveOptions {
 	so := &SaveOptions{}
 	so.Depth = 0

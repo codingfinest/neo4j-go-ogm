@@ -80,6 +80,7 @@ var clauseGroups = [5]clause{
 type clause int
 type clauses map[clause][]string
 
+//Gogm is an instance of the OGM
 type Gogm struct {
 	uri      string
 	username string

@@ -188,17 +188,14 @@ func (nqb nodeQueryBuilder) getLoadAll(IDs interface{}, lo *LoadOptions) (string
 }
 
 func (nqb nodeQueryBuilder) getDelete() (string, map[string]interface{}, map[string]graph) {
-	nSign := nqb.n.getSignature()
 	match, parameters, _ := nqb.getMatch()
-	delete := `DETACH DELETE ` + nSign + ` RETURN ID(` + nSign + `)
+	delete := `DETACH DELETE ` + nqb.n.getSignature() + ` RETURN ID(` + nqb.n.getSignature() + `)
 	`
 	return match + delete, parameters, nil
 }
 
 func (nqb nodeQueryBuilder) getDeleteAll() (string, map[string]interface{}) {
-	return `MATCH (n:` + nqb.n.getLabel() + `)
-	DETACH DELETE n
-	RETURN ID(n)`, nil
+	return `MATCH (n:` + nqb.n.getLabel() + `) DETACH DELETE n RETURN ID(n)`, nil
 }
 
 func (nqb nodeQueryBuilder) getCountEntitiesOfType() (string, map[string]interface{}) {

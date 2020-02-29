@@ -22,18 +22,14 @@
 
 package gogm
 
+//Session provides access to the database
 type Session interface {
 	Load(object interface{}, ID interface{}, loadOptions *LoadOptions) error
 	LoadAll(objects interface{}, IDs interface{}, loadOptions *LoadOptions) error
 	Reload(objects ...interface{}) error
 	Save(objects interface{}, saveOptions *SaveOptions) error
-
-	//Delete object(s) at depth depth
 	Delete(object interface{}) error
-
-	//Delete all entities of object type
 	DeleteAll(object interface{}, deleteOptions *DeleteOptions) error
-
 	PurgeDatabase() error
 	Clear() error
 	BeginTransaction() (*transaction, error)

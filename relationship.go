@@ -68,10 +68,9 @@ func (r *relationship) getRelatedGraphs() map[int64]graph {
 }
 
 func (r *relationship) setRelatedGraph(g graph) {
-	//TODO don't compare by value. compare by id?
-	if *g.getValue() == *r.nodes[startNode].getValue() {
+	if g.getID() == r.nodes[startNode].getID() {
 		r.nodes[startNode] = g
-	} else if *g.getValue() == *r.nodes[endNode].getValue() {
+	} else if g.getID() == r.nodes[endNode].getID() {
 		r.nodes[endNode] = g
 
 	}

@@ -134,6 +134,8 @@ func (s *saver) persist(graphs []graph, saveOptions *SaveOptions) ([]int, neo4j.
 		record neo4j.Record
 		params map[string]interface{}
 
+		loadedGraphs = newstore(nil)
+
 		savedGraphs   map[string]graph
 		deletedGraphs map[string]graph
 
@@ -154,7 +156,7 @@ func (s *saver) persist(graphs []graph, saveOptions *SaveOptions) ([]int, neo4j.
 
 		var graphSaveClauses clauses
 		var savedDepth int
-		if savedDepth, graphSaveClauses, savedGraphs, deletedGraphs, params, err = s.getSaveMeta(graph, saveOptions, ensureID); err != nil {
+		if savedDepth, graphSaveClauses, savedGraphs, deletedGraphs, params, err = s.getSaveMeta(graph, saveOptions, ensureID, loadedGraphs); err != nil {
 			return savedDepths, nil, nil, nil, err
 		}
 
@@ -202,15 +204,17 @@ func (s *saver) persist(graphs []graph, saveOptions *SaveOptions) ([]int, neo4j.
 	cypher += _return
 
 	if cypher != emptyString {
-		if record, err = neo4j.Single(s.cypherExecuter.exec(cypher, grandParams)); err != nil {
+		var records []neo4j.Record
+		if records, err = neo4j.Collect(s.cypherExecuter.exec(cypher, grandParams)); err != nil {
 			return savedDepths, nil, nil, nil, err
 		}
+		record = records[0]
 	}
 
 	return savedDepths, record, grandSavedGraphs, grandDeletedGraphs, err
 }
 
-func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(graph)) (int, map[clause][]string, map[string]graph, map[string]graph, map[string]interface{}, error) {
+func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(graph), loadedGraphs store) (int, map[clause][]string, map[string]graph, map[string]graph, map[string]interface{}, error) {
 	var (
 		err error
 
@@ -220,9 +224,8 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 		parameters       = []map[string]interface{}{}
 		graphSaveClauses = map[clause][]string{}
 
-		loadedGraphs = newstore(nil)
-		savedDepth   = -1
-		depedencies  []map[string]graph
+		savedDepth  = -1
+		depedencies []map[string]graph
 	)
 
 	maxGraphDepth := maxDepth
@@ -240,20 +243,18 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 
 	for len(queue) > 0 {
 
-		if reflect.TypeOf(queue[0]) == typeOfPrivateRelationship && queue[0].getCoordinate().depth > maxGraphDepth {
-			break
-		}
-
 		savedDepth = queue[0].getCoordinate().depth
 
 		if err = notifyPreSaveGraph(queue[0], s.eventer, s.registry); err != nil {
 			return savedDepth, nil, nil, nil, nil, err
 		}
 
-		if err := loadRelatedGraphs(queue[0], ensureID, s.registry, loadedGraphs, s.store); err != nil {
-			//TODO hit this error. then save in test
-			return savedDepth, nil, nil, nil, nil, err
+		if reflect.TypeOf(queue[0]) == typeOfPrivateRelationship || queue[0].getCoordinate().depth+1 < maxGraphDepth {
+			if err := loadRelatedGraphs(queue[0], ensureID, s.registry, loadedGraphs, s.store); err != nil {
+				return savedDepth, nil, nil, nil, nil, err
+			}
 		}
+
 		var cBuilder graphQueryBuilder
 		if cBuilder, err = newCypherBuilder(queue[0], s.registry, s.store); err != nil {
 			return savedDepth, nil, nil, nil, nil, err
@@ -282,33 +283,35 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 			parameters = append(parameters, setParameters)
 			graphSaveClauses[setClause] = append(graphSaveClauses[setClause], set)
 
-			removedRelationships, otherNodes := cBuilder.getRemovedGraphs()
+			if queue[0].getCoordinate().depth+1 < maxGraphDepth {
+				removedRelationships, otherNodes := cBuilder.getRemovedGraphs()
 
-			for _, removedRelationship := range removedRelationships {
+				for _, removedRelationship := range removedRelationships {
 
-				otherNode := otherNodes[removedRelationship.getID()]
-				var removedCBuilder, otherGraphCBuilder graphQueryBuilder
-				if removedCBuilder, err = newCypherBuilder(removedRelationship, s.registry, nil); err != nil {
-					return savedDepth, nil, nil, nil, nil, err
+					otherNode := otherNodes[removedRelationship.getID()]
+					var removedCBuilder, otherGraphCBuilder graphQueryBuilder
+					if removedCBuilder, err = newCypherBuilder(removedRelationship, s.registry, nil); err != nil {
+						return savedDepth, nil, nil, nil, nil, err
+					}
+					if otherGraphCBuilder, err = newCypherBuilder(otherNode, s.registry, nil); err != nil {
+						return savedDepth, nil, nil, nil, nil, err
+					}
+
+					match, matchParameters, matchDeps := removedCBuilder.getMatch()
+					parameters = append(parameters, matchParameters)
+					graphSaveClauses[matchClause] = append(graphSaveClauses[matchClause], match)
+					depedencies = append(depedencies, matchDeps)
+
+					match, matchParameters, matchDeps = otherGraphCBuilder.getMatch()
+					parameters = append(parameters, matchParameters)
+					graphSaveClauses[matchClause] = append(graphSaveClauses[matchClause], match)
+					depedencies = append(depedencies, matchDeps)
+
+					graphSaveClauses[deleteClause] = append(graphSaveClauses[deleteClause], "DELETE "+removedRelationship.getSignature()+"\n")
+
+					deletedGraphs[removedRelationship.getSignature()] = removedRelationship
+					savedGraphs[otherNode.getSignature()] = otherNode
 				}
-				if otherGraphCBuilder, err = newCypherBuilder(otherNode, s.registry, nil); err != nil {
-					return savedDepth, nil, nil, nil, nil, err
-				}
-
-				match, matchParameters, matchDeps := removedCBuilder.getMatch()
-				parameters = append(parameters, matchParameters)
-				graphSaveClauses[matchClause] = append(graphSaveClauses[matchClause], match)
-				depedencies = append(depedencies, matchDeps)
-
-				match, matchParameters, matchDeps = otherGraphCBuilder.getMatch()
-				parameters = append(parameters, matchParameters)
-				graphSaveClauses[matchClause] = append(graphSaveClauses[matchClause], match)
-				depedencies = append(depedencies, matchDeps)
-
-				graphSaveClauses[deleteClause] = append(graphSaveClauses[deleteClause], "DELETE "+removedRelationship.getSignature()+"\n")
-
-				deletedGraphs[removedRelationship.getSignature()] = removedRelationship
-				savedGraphs[otherNode.getSignature()] = otherNode
 			}
 			savedGraphs[queue[0].getSignature()] = queue[0]
 		}
@@ -324,7 +327,9 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 		queue = queue[1:]
 	}
 
-	//TODO if a depedency isn't met, kick its depender out
+	//Relationship match depends on Node match. When relationships are dirty,
+	//but node's aren't dirty, node match have to be included to match
+	//the relationship for update
 	for _, dep := range depedencies {
 		for ID := range dep {
 			if savedGraphs[ID] == nil {
@@ -332,20 +337,6 @@ func (s *saver) getSaveMeta(g graph, saveOptions *SaveOptions, ensureID func(gra
 				parameters = append(parameters, matchParameters)
 				graphSaveClauses[matchClause] = append(graphSaveClauses[matchClause], match)
 				savedGraphs[ID] = gotten[ID].getGraph()
-			}
-		}
-	}
-
-	for _, queuedGraph := range queue {
-		if queuedGraph.getID() < initialGraphID {
-			unloadGraphID(queuedGraph, nil)
-		}
-		for _, relatedGraph := range queuedGraph.getRelatedGraphs() {
-			if relatedGraph.getID() < initialGraphID {
-				if relatedGraph.getCoordinate() != nil && savedGraphs[relatedGraph.getSignature()] != nil {
-					continue
-				}
-				unloadGraphID(relatedGraph, nil)
 			}
 		}
 	}

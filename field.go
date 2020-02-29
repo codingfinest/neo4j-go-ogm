@@ -52,7 +52,7 @@ func (f *field) isEntity(graphEntityType reflect.Type) bool {
 		return false
 	}
 
-	if internalGrpahType, err := getInternalGraphType(elem2(f.getStructField().Type).Elem()); internalGrpahType == graphEntityType && err == nil {
+	if internalGrpahType := getInternalGraphType(elem2(f.getStructField().Type).Elem()); internalGrpahType == graphEntityType {
 		return true
 	}
 

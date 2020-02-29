@@ -1,3 +1,4 @@
+//Package gogm is a package for mapping go runtime objects to neo4j entities.
 // MIT License
 //
 // Copyright (c) 2020 codingfinest
@@ -50,8 +51,7 @@ func getFeilds(v reflect.Value, fieldFilters ...fieldFilter) ([][]*field, error)
 func getEntitiesFromField(f *field) []reflect.Value {
 	values := []reflect.Value{}
 	kind := f.getStructField().Type.Kind()
-	//TODO  rm support for reflect.Array
-	if kind == reflect.Slice || kind == reflect.Array {
+	if kind == reflect.Slice {
 		for i := 0; i < f.getValue().Len(); i++ {
 			if f.getValue().Index(i).IsNil() || !f.getValue().Index(i).Elem().IsValid() {
 				continue

@@ -36,9 +36,6 @@ type deleter struct {
 	graphFactory   graphFactory
 }
 
-type DeleteOptions struct {
-}
-
 func newDeleter(cypherExecuter *cypherExecuter, store store, eventer eventer, registry *registry, graphFactory graphFactory) *deleter {
 	return &deleter{cypherExecuter, store, eventer, registry, graphFactory}
 }

@@ -23,7 +23,6 @@
 package gogm
 
 import (
-	"errors"
 	"reflect"
 )
 
@@ -38,15 +37,14 @@ func getInternalType(t reflect.Type) reflect.Type {
 	return internalType
 }
 
-//TODO Doc: To get the embedded node fiedl
-func getInternalGraphType(container reflect.Type) (reflect.Type, error) {
+func getInternalGraphType(container reflect.Type) reflect.Type {
 
 	index := []int{0}
 	f := container.FieldByIndex(index)
 
 	for field0 := &f; field0 != nil; {
 		if internalType := getInternalType(field0.Type); internalType != nil {
-			return internalType, nil
+			return internalType
 		}
 
 		if field0.Type.Kind() == reflect.Struct && field0.Type.NumField() > 0 && field0.Type.FieldByIndex(index).Anonymous {
@@ -57,7 +55,7 @@ func getInternalGraphType(container reflect.Type) (reflect.Type, error) {
 		}
 	}
 
-	return nil, errors.New("The internal graph type of " + container.String() + " can't be determined")
+	return nil
 }
 
 func flattenParamters(parameters []map[string]interface{}) map[string]interface{} {

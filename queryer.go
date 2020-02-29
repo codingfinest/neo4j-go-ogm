@@ -24,6 +24,7 @@ package gogm
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -171,7 +172,7 @@ func (q *queryer) query(cypher string, parameters map[string]interface{}, object
 					}
 				}
 				if g == nil {
-					return nil, errors.New("couldn't fit in node") //TODO better error
+					return nil, errors.New(fmt.Sprint("Not found: Runtime object for Node with id:", neo4jNode.Id(), " and label:", strings.Join(neo4jNode.Labels(), labelsDelim)))
 				}
 				columns[key] = g.getValue().Interface()
 			} else if neo4jRelationship, isNeo4jRelationship := record.GetByIndex(index).(neo4j.Relationship); isNeo4jRelationship == true {
@@ -194,8 +195,7 @@ func (q *queryer) query(cypher string, parameters map[string]interface{}, object
 					}
 				}
 				if g == nil {
-					//Note realtionship cuold be simple relationship and no domain objet to hold it
-					return nil, errors.New("couldn't fit in relationship") //TODO better error
+					return nil, errors.New(fmt.Sprint("Not found: Runtime object for Node with id:", neo4jRelationship.Id(), " and type:", neo4jRelationship.Type()))
 				}
 				columns[key] = g.getValue().Interface()
 			} else {
@@ -211,15 +211,10 @@ func (q *queryer) query(cypher string, parameters map[string]interface{}, object
 func (q *queryer) getObjectsFromRecords(domainObjectType reflect.Type, metadata metadata, label string, records []neo4j.Record) (reflect.Value, error) {
 
 	var (
-		err                     error
 		g                       graph
 		entityLabel             string
-		internalGraphEntityType reflect.Type
+		internalGraphEntityType = getInternalGraphType(domainObjectType.Elem())
 	)
-
-	if internalGraphEntityType, err = getInternalGraphType(domainObjectType.Elem()); err != nil {
-		return invalidValue, err
-	}
 
 	sliceOfPtrToObjs := reflect.MakeSlice(reflect.SliceOf(domainObjectType), 0, 0)
 	ptrToObjs := reflect.New(sliceOfPtrToObjs.Type())

@@ -29,11 +29,18 @@ type lifeCycle int
 const (
 	//CREATE is an event life cycle indicating creation of an object
 	CREATE lifeCycle = iota
-	LOAD             //READ
+
+	//LOAD is an event life cycle indicating the load of an object
+	LOAD
+
+	//UPDATE is an event life cycle indicating the update of an object
 	UPDATE
+
+	//DELETE is an event life cycle indicating the delete of an object
 	DELETE
 )
 
+//Event is fired on an object during one of the following life cycle CREATE, LOAD, UPDATE or DELETE
 type Event interface {
 	GetObject() interface{}
 	GetLifeCycle() lifeCycle
@@ -52,6 +59,7 @@ func (e event) GetLifeCycle() lifeCycle {
 	return e.lifeCycle
 }
 
+//EventListener listens for Events
 type EventListener interface {
 	OnPreSave(event Event)
 	OnPostSave(event Event)
