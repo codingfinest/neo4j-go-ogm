@@ -123,6 +123,10 @@ Thanks for trying out the package! Any bug found should be documented with speci
 ### Coming soon
 * **Load options** Filters, Sort, Pagination etc
 
+### LICENSE
+
+MIT
+
 
 
 
