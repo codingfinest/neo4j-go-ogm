@@ -80,36 +80,57 @@ var clauseGroups = [5]clause{
 type clause int
 type clauses map[clause][]string
 
+type LogLevel neo4j.LogLevel
+
+const (
+	ERROR   LogLevel = 1
+	WARNING          = 2
+	INFO             = 3
+	DEBUG            = 4
+)
+
+var logLevels = map[LogLevel]neo4j.LogLevel{
+	ERROR:   neo4j.ERROR,
+	WARNING: neo4j.WARNING,
+	INFO:    neo4j.INFO,
+	DEBUG:   neo4j.DEBUG,
+}
+
 //Gogm is an instance of the OGM
 type Gogm struct {
 	uri      string
 	username string
 	password string
+	logLevel LogLevel
+	driver   neo4j.Driver
 }
 
 //New creates a new instance of the OGM
-func New(uri string, username string, password string) *Gogm {
+func New(uri string, username string, password string, logLevel LogLevel) *Gogm {
 	return &Gogm{
 		uri,
 		username,
-		password}
+		password,
+		logLevel,
+		nil}
 }
 
 //NewSession creates a new session on an OGM instance
 func (g *Gogm) NewSession(isWriteMode bool) (Session, error) {
 
 	var err error
-	var driver neo4j.Driver
 	var accessMode neo4j.AccessMode = neo4j.AccessModeRead
 	if isWriteMode {
 		accessMode = neo4j.AccessModeWrite
 	}
 
-	if driver, err = getDriver(g.uri, g.username, g.password); err != nil {
-		return nil, err
+	if g.driver == nil {
+		if g.driver, err = getDriver(g.uri, g.username, g.password, g.logLevel); err != nil {
+			return nil, err
+		}
 	}
 
-	cypherExecutor := newCypherExecuter(driver, accessMode, nil)
+	cypherExecutor := newCypherExecuter(g.driver, accessMode, nil)
 	registry := newRegistry(*cypherExecutor)
 	graphFactory := newGraphFactory(registry)
 	transactioner := newTransactioner(accessMode)
@@ -129,18 +150,18 @@ func (g *Gogm) NewSession(isWriteMode bool) (Session, error) {
 		transactioner,
 		store,
 		registry,
-		driver,
+		g.driver,
 		eventer}, nil
 }
 
-func getDriver(uri string, username string, password string) (neo4j.Driver, error) {
+func getDriver(uri string, username string, password string, logLevel LogLevel) (neo4j.Driver, error) {
 	var (
 		err    error
 		driver neo4j.Driver
 	)
 
 	if driver, err = neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""), func(config *neo4j.Config) {
-		config.Log = neo4j.ConsoleLogger(neo4j.DEBUG)
+		config.Log = neo4j.ConsoleLogger(logLevels[logLevel])
 	}); err != nil {
 		return nil, err
 	}

@@ -34,7 +34,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var ogm = gogm.New("bolt://localhost:7687", "neo4j", "Pass1234")
+var ogm = gogm.New("bolt://localhost:7687", "neo4j", "Pass1234", gogm.DEBUG)
 var session, err = ogm.NewSession(true)
 
 const deletedID int64 = -1
