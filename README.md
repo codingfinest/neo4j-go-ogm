@@ -116,7 +116,7 @@ Relationships must be a pointer to a `struct` as can be seen in the `Movie`-`Dir
 
 ### Reporting bugs
 
-Thanks for trying out the package! Any bug found should be documented with specific reproducible conditions on the githib issue page. Fork the project, add a failing unit test and If you wanna challenge yourself to fix the bug,propose a fix. Regardless of how small or huge the fix is, let's discuss first.
+Thanks for trying out the package! Any bug found should be documented with specific reproducible conditions on the githib issue page.
 
 
 
