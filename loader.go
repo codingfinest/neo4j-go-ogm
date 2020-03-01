@@ -445,6 +445,9 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int, relate
 				}
 
 				if graphfield == nil {
+					//'first' must be a Node. A relationship can't have a missing field.
+					//Remove the related graph since its value can't be determined.
+					delete(first.getRelatedGraphs(), relatedGraph.getID())
 					continue
 				}
 
@@ -458,7 +461,7 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int, relate
 				addDomainObject(graphfield, value)
 				relatedGraph.setValue(&value)
 
-				//first is a Node and related graph field is a Node  field. relatedGraph is relationship A
+				//'first' is a Node and related graph field is a Node  field. relatedGraph is relationship A
 				if first.getValue().IsValid() && reflect.TypeOf(firstMetadata) == reflect.TypeOf(graphFieldMetadata) {
 					relatedGraph.setValue(&invalidValue)
 					otherNode := relatedGraph.getRelatedGraphs()[startNode]
