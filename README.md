@@ -53,7 +53,14 @@ Relationships must be a pointer to a `struct` as can be seen in the `Movie`-`Dir
 
 ```
 
-	var ogm = gogm.New("bolt://localhost:7687", "USERNAME", "PASSWORD", gogm.NONE)
+	var config = &gogm.Config{
+		"uri",
+		"username",
+		"password",
+		gogm.NONE, /*log level*/
+		false /*allow cyclic ref*/}
+
+	var ogm = gogm.New(config)
 	var session, err = ogm.NewSession(true)
 	if err != nil {
 		panic(err)
