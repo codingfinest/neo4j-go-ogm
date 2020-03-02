@@ -37,10 +37,11 @@ type loader struct {
 	eventer        eventer
 	registry       *registry
 	graphFactory   graphFactory
+	allowCyclicRef bool
 }
 
-func newLoader(cypherExecuter *cypherExecuter, store store, eventer eventer, registry *registry, graphFactory graphFactory) *loader {
-	return &loader{cypherExecuter, store, eventer, registry, graphFactory}
+func newLoader(cypherExecuter *cypherExecuter, store store, eventer eventer, registry *registry, graphFactory graphFactory, allowCyclicRef bool) *loader {
+	return &loader{cypherExecuter, store, eventer, registry, graphFactory, allowCyclicRef}
 }
 
 func (l *loader) load(object interface{}, ID interface{}, loadOptions *LoadOptions, reload bool) (store, error) {
@@ -461,7 +462,7 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int, relate
 				addDomainObject(graphfield, value)
 				relatedGraph.setValue(&value)
 
-				//'first' is a Node and related graph field is a Node  field. relatedGraph is relationship A
+				//'first' is a Node and related graph field is a Node field. relatedGraph is relationship A
 				if first.getValue().IsValid() && reflect.TypeOf(firstMetadata) == reflect.TypeOf(graphFieldMetadata) {
 					relatedGraph.setValue(&invalidValue)
 					otherNode := relatedGraph.getRelatedGraphs()[startNode]
@@ -470,11 +471,27 @@ func (l *loader) unloadDBObject(g graph, unloadedGrahps store, depth int, relate
 					}
 					otherNode.setValue(&value)
 
+					if graphfield, err = graphFieldMetadata.getGraphField(otherNode, relatedGraph); err != nil {
+						return -1, err
+					}
+
+					if graphfield != nil && l.allowCyclicRef {
+						addDomainObject(graphfield, *first.getValue())
+					}
+
 					relatedValues[reflect.TypeOf(relatedGraph)][relatedGraph.getID()][otherNode.getID()] = true
 					if relatedValues[reflect.TypeOf(otherNode)][otherNode.getID()] == nil {
 						relatedValues[reflect.TypeOf(otherNode)][otherNode.getID()] = map[int64]bool{}
 					}
 					relatedValues[reflect.TypeOf(otherNode)][otherNode.getID()][relatedGraph.getID()] = true
+				} else {
+					if graphfield, err = graphFieldMetadata.getGraphField(relatedGraph, first); err != nil {
+						return -1, err
+					}
+
+					if graphfield != nil && l.allowCyclicRef {
+						addDomainObject(graphfield, *first.getValue())
+					}
 				}
 				relatedValues[reflect.TypeOf(first)][first.getID()][relatedGraph.getID()] = true
 				relatedValues[reflect.TypeOf(relatedGraph)][relatedGraph.getID()][first.getID()] = true

@@ -89,6 +89,7 @@ type Node5 struct {
 	TestNodeEntity
 	N4   *Node4
 	R1   *SimpleRelationship
+	R2   *SimpleRelationshipSameNode
 	Name string
 }
 

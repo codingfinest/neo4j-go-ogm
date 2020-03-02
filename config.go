@@ -20,42 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package models
+package gogm
 
-import gogm "github.com/codingfinest/neo4j-go-ogm"
-
-type TestRelationshipEntity struct {
-	gogm.Relationship
-	TestEntity
-}
-
-//Relationships
-
-type SimpleRelationship struct {
-	TestRelationshipEntity
-	N5     *Node5 `gogm:"startNode"`
-	N4     *Node4 `gogm:"endNode"`
-	Name   string
-	TestID string `gogm:"id"`
-}
-
-type SimpleRelationship2 struct {
-	TestRelationshipEntity
-	N5   *Node5 `gogm:"startNode"`
-	N4   *Node4 `gogm:"endNode"`
-	Name string
-}
-
-type SimpleRelationshipPrime struct {
-	TestRelationshipEntity `gogm:"reltype:SIMPLERELATIONSHIP"`
-	N5                     *Node5 `gogm:"startNode"`
-	N4                     *Node4 `gogm:"endNode"`
-	Name                   string
-}
-
-type SimpleRelationshipSameNode struct {
-	TestRelationshipEntity
-	N51  *Node5 `gogm:"startNode"`
-	N52  *Node5 `gogm:"endNode"`
-	Name string
+//Config holds the OGM configuration
+type Config struct {
+	URI            string
+	Username       string
+	Password       string
+	LogLevel       LogLevel
+	AllowCyclicRef bool
 }

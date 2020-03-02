@@ -99,20 +99,14 @@ var logLevels = map[LogLevel]neo4j.LogLevel{
 
 //Gogm is an instance of the OGM
 type Gogm struct {
-	uri      string
-	username string
-	password string
-	logLevel LogLevel
-	driver   neo4j.Driver
+	config *Config
+	driver neo4j.Driver
 }
 
 //New creates a new instance of the OGM
-func New(uri string, username string, password string, logLevel LogLevel) *Gogm {
+func New(config *Config) *Gogm {
 	return &Gogm{
-		uri,
-		username,
-		password,
-		logLevel,
+		config,
 		nil}
 }
 
@@ -126,7 +120,7 @@ func (g *Gogm) NewSession(isWriteMode bool) (Session, error) {
 	}
 
 	if g.driver == nil {
-		if g.driver, err = getDriver(g.uri, g.username, g.password, g.logLevel); err != nil {
+		if g.driver, err = getDriver(g.config.URI, g.config.Username, g.config.Password, g.config.LogLevel); err != nil {
 			return nil, err
 		}
 	}
@@ -138,7 +132,7 @@ func (g *Gogm) NewSession(isWriteMode bool) (Session, error) {
 	eventer := newEventer()
 	store := newstore(registry)
 	saver := newSaver(cypherExecutor, store, *eventer, registry, *graphFactory)
-	loader := newLoader(cypherExecutor, store, *eventer, registry, *graphFactory)
+	loader := newLoader(cypherExecutor, store, *eventer, registry, *graphFactory, g.config.AllowCyclicRef)
 	deleter := newDeleter(cypherExecutor, store, *eventer, registry, *graphFactory)
 	queryer := newQueryer(cypherExecutor, *graphFactory, registry)
 

@@ -34,7 +34,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var ogm = gogm.New("bolt://localhost:7687", "neo4j", "Pass1234", gogm.DEBUG)
+var config = &gogm.Config{
+	"bolt://localhost:7687",
+	"neo4j",
+	"Pass1234",
+	gogm.DEBUG,
+	true}
+
+var ogm = gogm.New(config)
 var session, err = ogm.NewSession(true)
 
 const deletedID int64 = -1
@@ -1295,6 +1302,74 @@ func TestByteProperty(t *testing.T) {
 
 	n0_1.ClearMetaTimestamps()
 	g.Expect(loadedN0).To(Equal(n0_1))
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
+
+func TestRichRelationshipSameNodes(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.RegisterEventListener(eventListener)).NotTo(HaveOccurred())
+
+	n51 := &Node5{}
+	n52 := &Node5{}
+
+	n51.Name = "51"
+	n52.Name = "52"
+
+	simpleRelationshipSameNode := &SimpleRelationshipSameNode{}
+	simpleRelationshipSameNode.N51 = n51
+	simpleRelationshipSameNode.N52 = n52
+
+	g.Expect(session.Save(&simpleRelationshipSameNode, nil)).NotTo(HaveOccurred())
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+
+	var loadedSimpleRelationshipSameNode *SimpleRelationshipSameNode
+	g.Expect(session.Load(&loadedSimpleRelationshipSameNode, *simpleRelationshipSameNode.ID, nil)).NotTo(HaveOccurred())
+
+	simpleRelationshipSameNode.ClearMetaTimestamps()
+	n51.ClearMetaTimestamps()
+	n52.ClearMetaTimestamps()
+
+	g.Expect(loadedSimpleRelationshipSameNode.N51.Name).To(Equal("51"))
+	g.Expect(loadedSimpleRelationshipSameNode.N52.Name).To(Equal("52"))
+
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
+}
+
+func TestNodeEmbedRichRelationshipWithSameNodes(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
+	g.Expect(session.RegisterEventListener(eventListener)).NotTo(HaveOccurred())
+
+	n51 := &Node5{}
+	n52 := &Node5{}
+
+	n51.Name = "51"
+	n52.Name = "52"
+
+	simpleRelationshipSameNode := &SimpleRelationshipSameNode{}
+	simpleRelationshipSameNode.N51 = n51
+	simpleRelationshipSameNode.N52 = n52
+
+	n51.R2 = simpleRelationshipSameNode
+
+	g.Expect(session.Save(&n51, nil)).NotTo(HaveOccurred())
+	g.Expect(session.Clear()).NotTo(HaveOccurred())
+
+	var loadedN51 *Node5
+	g.Expect(session.Load(&loadedN51, *n51.ID, nil)).NotTo(HaveOccurred())
+
+	simpleRelationshipSameNode.ClearMetaTimestamps()
+	n51.ClearMetaTimestamps()
+	n52.ClearMetaTimestamps()
+
+	g.Expect(n51.Name).To(Equal(loadedN51.Name))
+	g.Expect(n51.R2.Name).To(Equal(loadedN51.R2.Name))
+	g.Expect(n51.R2.N51.Name).To(Equal(loadedN51.R2.N51.Name))
+	g.Expect(n51.R2.N52.Name).To(Equal(loadedN51.R2.N52.Name))
+
 	g.Expect(session.PurgeDatabase()).NotTo(HaveOccurred())
 	g.Expect(session.DisposeEventListener(eventListener)).NotTo(HaveOccurred())
 }
