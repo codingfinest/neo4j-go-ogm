@@ -2,6 +2,8 @@
 
 The main goal of Neo4j-go-ogm is to get developers up and running quickly without writing unnecessary boiler plate code. Using Go Tags, Go runtime `structs` can be annotated and mapped to Neo4j domain entities. This project was hugely inspired by the Java version of Neo4j OGM.
 
+This quick start is based on a simple application [here](https://github.com/codingfinest/neo4j-go-ogm-playground). If you're familiar with Neo4j and Golang, you can checkout a more complex application [here](https://github.com/codingfinest/neo4j-go-ogm-university) heavily based on the official Neo4j Java OGM university [example](https://github.com/neo4j-examples/neo4j-ogm-university).
+
 ## Quick start
 
 ```
